@@ -6,7 +6,6 @@ const { createTaskSchema, updateTaskSchema, getTasksSchema } = require('../../co
 
 const router = express.Router();
 
-// All task routes are protected
 router.use(authenticate);
 
 router.get('/', validate(getTasksSchema), taskController.getTasks.bind(taskController));

@@ -7,7 +7,6 @@ class AuthService {
   async register(data) {
     const { email, password, name } = data;
 
-    // Check if user exists
     const existingUser = await authRepository.findUserByEmail(email);
     if (existingUser) {
       const error = new Error('Email already registered');
@@ -15,17 +14,14 @@ class AuthService {
       throw error;
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
     const newUser = await authRepository.createUser({
       email,
       password: hashedPassword,
       name,
     });
 
-    // Generate Token
     const token = this._generateToken(newUser.id, newUser.email);
 
     return {

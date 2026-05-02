@@ -10,23 +10,19 @@ const chatbotRoutes = require('./modules/chatbot/chatbot.routes');
 
 const app = express();
 
-// Global Middlewares
-app.use(express.json()); // Parse JSON bodies
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors()); // Enable CORS
+app.use(cors());
 
-// API Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/tasks', taskRoutes);
 app.use('/api/v1/places', placeRoutes);
 app.use('/api/v1/chatbot', chatbotRoutes);
 
-// Health Check Endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ success: true, message: 'Server is healthy' });
 });
 
-// 404 Handler
 app.use((req, res, next) => {
   res.status(404).json({ success: false, message: 'API endpoint not found' });
 });

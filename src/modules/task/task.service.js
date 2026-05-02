@@ -29,7 +29,7 @@ class TaskService {
   async createTask(userId, taskData) {
     const { title, description, status } = taskData;
     
-    // title validation is now handled by Zod
+
     return taskRepository.createTask({
       title,
       description,
