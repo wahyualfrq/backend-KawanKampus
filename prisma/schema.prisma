@@ -1,0 +1,111 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks     Task[]
+  favorites Favorite[]
+  histories History[]
+  chatLogs  ChatLog[]
+
+  @@map("users")
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("tasks")
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+model Place {
+  id          String   @id @default(uuid())
+  googleId    String   @unique
+  name        String
+  category    Category
+  address     String
+  lat         Float
+  lng         Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  favorites   Favorite[]
+
+  @@index([lat, lng])
+  @@index([category])
+  @@map("places")
+}
+
+enum Category {
+  PHOTOCOPY
+  FOOD
+  ATK
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  placeId   String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  place     Place    @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, placeId])
+  @@map("favorites")
+}
+
+model History {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String   // e.g., "SEARCHED_PLACE", "COMPLETED_TASK"
+  metadata  Json?    // Store additional context
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("histories")
+}
+
+model ChatLog {
+  id        String   @id @default(uuid())
+  userId    String
+  message   String
+  response  String
+  context   Json?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("chat_logs")
+}
