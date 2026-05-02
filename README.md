@@ -101,6 +101,3 @@ src/
 ├── app.js           # Express App setup
 └── server.js        # Entry point
 ```
-
-## 📄 Lisensi
-Distributed under the ISC License.
