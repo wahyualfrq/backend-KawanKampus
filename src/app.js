@@ -1,6 +1,10 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
+const { rateLimit } = require('express-rate-limit');
 const errorHandler = require('./common/middleware/error.middleware');
+const config = require('./common/config/env');
 
 // Route Imports
 const authRoutes = require('./modules/auth/auth.routes');
@@ -13,21 +17,45 @@ const settingsRoutes = require('./modules/settings/settings.routes');
 
 const app = express();
 
-// Middleware
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  
-  // Handle preflight
-  if (req.method === 'OPTIONS') {
-    return res.status(200).send();
-  }
-  next();
-});
+// Security Headers
+app.use(helmet());
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Dynamic CORS Configuration
+const allowedOrigins = config.allowedOrigins 
+  ? config.allowedOrigins.split(',') 
+  : ['http://localhost:3000', 'http://localhost:5173'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Blocked by CORS policy'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+  credentials: true
+}));
+
+// Compression for performance
+app.use(compression());
+
+// Global Rate Limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 150, // Limit each IP to 150 requests per window
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests from this IP, please try again later.' }
+});
+app.use(limiter);
+
+// Payload limit setup (secure against huge inputs, but allows base64 avatar uploads)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/tasks', taskRoutes);

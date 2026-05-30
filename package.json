@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
+    "build": "prisma generate",
     "prisma:generate": "npx prisma generate",
     "prisma:push": "npx prisma db push",
     "prisma:studio": "npx prisma studio",
@@ -19,9 +20,12 @@
     "@prisma/client": "^5.22.0",
     "axios": "^1.15.2",
     "bcrypt": "^6.0.0",
+    "compression": "^1.7.5",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.3",
     "prisma": "^5.22.0",
     "zod": "^4.4.2"

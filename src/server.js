@@ -1,13 +1,12 @@
 const app = require('./app');
 const config = require('./common/config/env');
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const prisma = require('./common/config/prisma');
 
 const startServer = async () => {
   try {
+    // Lazily connect to database on local development startup
     await prisma.$connect();
-    console.log('✅ Database connected successfully');
+    console.log('✅ Database connected successfully via Singleton');
 
     app.listen(config.port, () => {
       console.log(`🚀 KawanKampus API is running on http://localhost:${config.port}`);
