@@ -6,6 +6,23 @@ const { rateLimit } = require('express-rate-limit');
 const errorHandler = require('./common/middleware/error.middleware');
 const config = require('./common/config/env');
 
+// Global Uncaught Exception & Rejection Handlers to prevent serverless function crash
+process.on('uncaughtException', (error) => {
+  console.error('🔥 CRITICAL: Uncaught Exception detected:', error.message, error.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🔥 CRITICAL: Unhandled Rejection at Promise:', promise, 'reason:', reason);
+});
+
+// Validate key environment variables on startup
+if (!process.env.DATABASE_URL) {
+  console.error('❌ CRITICAL ERROR: DATABASE_URL environment variable is missing!');
+}
+if (!process.env.JWT_SECRET) {
+  console.error('⚠️ WARNING: JWT_SECRET environment variable is missing. Falling back to default.');
+}
+
 // Route Imports
 const authRoutes = require('./modules/auth/auth.routes');
 const taskRoutes = require('./modules/task/task.routes');
