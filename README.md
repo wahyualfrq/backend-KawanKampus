@@ -46,10 +46,10 @@ Kini dioptimalkan untuk **Vercel Serverless** dan terintegrasi dengan **Supabase
    NODE_ENV=development
    
    # Untuk Migrasi/Push (Port 5432)
-   DATABASE_URL="postgresql://postgres.ciieuslelpandfbslelb:PASSWORD@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres?connection_limit=10"
+   DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?connection_limit=10"
    
    # Untuk Runtime/Production (Port 6543 dengan PgBouncer)
-   # DATABASE_URL="postgresql://postgres.ciieuslelpandfbslelb:PASSWORD@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=10"
+   # DATABASE_URL="postgresql://USER:PASSWORD@HOST:6543/DATABASE?pgbouncer=true&connection_limit=10"
 
    JWT_SECRET="kawankampus-super-secret-jwt-key-2024"
    JWT_EXPIRES_IN="7d"
