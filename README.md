@@ -1,31 +1,32 @@
 # KawanKampus Backend API
 
-KawanKampus adalah platform backend modular yang dirancang untuk mendukung kebutuhan mahasiswa, mencakup manajemen tugas (Kanban), rekomendasi tempat di sekitar kampus, dan asisten AI Chatbot.
+KawanKampus adalah platform backend modular yang dirancang untuk mendukung kebutuhan mahasiswa, mencakup manajemen tugas (Kanban), rekomendasi tempat di sekitar kampus, dan asisten AI Chatbot. 
+
+Kini dioptimalkan untuk **Vercel Serverless** dan terintegrasi dengan **Supabase PostgreSQL**.
+
+---
 
 ## 🚀 Fitur Utama
 - **Authentication**: Registrasi, Login, dan manajemen session menggunakan JWT.
-- **Kanban Task Management**: CRUD tugas dengan status (TODO, IN_PROGRESS, DONE).
+- **Kanban Task Management**: CRUD tugas dengan status (`TODO`, `IN_PROGRESS`, `DONE`).
 - **AI Chatbot Proxy**: Integrasi dengan layanan AI untuk asisten mahasiswa.
 - **Nearby Places**: Mencari lokasi penting (kafe, perpustakaan, dll) di sekitar koordinat tertentu.
+- **Favorites**: Menyimpan lokasi-lokasi favorit pengguna.
 - **Robust Validation**: Validasi data input menggunakan Zod.
 - **Clean Architecture**: Pemisahan logic menggunakan pola Repository-Service-Controller.
+- **Production Ready**: Dilengkapi dengan Helmet, CORS dinamis, kompresi GZIP, Rate Limiting, dan global exception handling.
 
 ## 🛠️ Tech Stack
 - **Runtime**: [Node.js](https://nodejs.org/)
 - **Framework**: [Express.js](https://expressjs.com/)
-- **Database**: [PostgreSQL](https://www.postgresql.org/)
+- **Database**: [PostgreSQL (Supabase)](https://supabase.com/)
 - **ORM**: [Prisma](https://www.prisma.io/)
-- **Validation**: [Zod](https://zod.dev/)
-- **Security**: [Bcrypt](https://github.com/kelektiv/node.bcrypt.js) & [JWT](https://jwt.io/)
+- **Driver**: [node-postgres (pg)](https://node-postgres.com/) dengan Global Pool Singleton
+- **Deployment**: [Vercel Serverless](https://vercel.com/)
 
 ---
 
-## 📋 Prasyarat
-- Node.js versi 18 atau lebih tinggi.
-- PostgreSQL database.
-- npm atau yarn.
-
-## ⚙️ Instalasi
+## ⚙️ Instalasi & Pengembangan Lokal
 
 1. **Clone repository**:
    ```bash
@@ -39,14 +40,20 @@ KawanKampus adalah platform backend modular yang dirancang untuk mendukung kebut
    ```
 
 3. **Setup Environment Variables**:
-   Buat file `.env` di root directory dan sesuaikan konfigurasinya:
+   Buat file `.env` di root directory:
    ```env
-   PORT=5000
-   DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/DATABASE_NAME?schema=public"
-   JWT_SECRET="your_very_secret_key"
-   JWT_EXPIRES_IN="1d"
-   # AI Chatbot Config (Optional)
-   AI_SERVICE_URL="https://api.external-ai.com"
+   PORT=3000
+   NODE_ENV=development
+   
+   # Untuk Migrasi/Push (Port 5432)
+   DATABASE_URL="postgresql://postgres.ciieuslelpandfbslelb:PASSWORD@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres?connection_limit=10"
+   
+   # Untuk Runtime/Production (Port 6543 dengan PgBouncer)
+   # DATABASE_URL="postgresql://postgres.ciieuslelpandfbslelb:PASSWORD@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=10"
+
+   JWT_SECRET="kawankampus-super-secret-jwt-key-2024"
+   JWT_EXPIRES_IN="7d"
+   ALLOWED_ORIGINS="http://localhost:5173,http://localhost:3000"
    ```
 
 4. **Prisma Setup**:
@@ -55,49 +62,79 @@ KawanKampus adalah platform backend modular yang dirancang untuk mendukung kebut
    npx prisma db push
    ```
 
-5. **Run the server**:
+5. **Jalankan Server Lokal**:
    ```bash
-   # Development
-   node src/server.js
+   # Menggunakan Auto-reload
+   npm run dev
    ```
 
 ---
 
 ## 📡 API Endpoints (v1)
 
-### Auth
+### 🟢 Public Endpoints
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/api/v1/auth/register` | Mendaftarkan user baru |
-| `POST` | `/api/v1/auth/login` | Login dan mendapatkan token |
-| `GET` | `/api/v1/auth/me` | Mendapatkan data profil (Auth required) |
+| `GET` | `/` | Selamat datang & Info Serverless Server |
+| `GET` | `/health` | Memeriksa kesehatan API |
+| `POST` | `/api/v1/auth/register` | Pendaftaran user baru |
+| `POST` | `/api/v1/auth/login` | Login user untuk mendapatkan JWT token |
+| `GET` | `/api/v1/places/config` | Konfigurasi fallback koordinat lokal |
 
-### Tasks (Kanban)
+### 🔒 Protected Endpoints (Memerlukan `Authorization: Bearer <token>`)
+
+#### Auth & Profil
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/v1/tasks` | List semua tugas user |
+| `GET` | `/api/v1/auth/me` | Detail user login saat ini |
+| `GET` | `/api/v1/settings/profile` | Mengambil data profil lengkap (termasuk `prodi`) |
+| `PUT` | `/api/v1/settings/profile` | Memperbarui detail profil user (termasuk `prodi`) |
+
+#### Pengaturan & Keamanan (`/api/v1/settings`)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/settings/preferences` | Mengambil preferensi user (tema, bahasa, unit) |
+| `PUT` | `/api/v1/settings/preferences` | Memperbarui preferensi user |
+| `PUT` | `/api/v1/settings/security/password` | Mengubah password |
+| `DELETE` | `/api/v1/settings/account` | Menghapus akun secara permanen |
+| `POST` | `/api/v1/settings/privacy/clear-history` | Menghapus riwayat chat AI & aktivitas |
+
+#### Kanban Tasks (`/api/v1/tasks`)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/tasks` | List semua tugas Kanban user |
 | `POST` | `/api/v1/tasks` | Membuat tugas baru |
-| `PATCH` | `/api/v1/tasks/:id` | Update status/konten tugas |
+| `PATCH` | `/api/v1/tasks/:id` | Update status (`TODO`/`IN_PROGRESS`/`DONE`) atau konten |
 | `DELETE` | `/api/v1/tasks/:id` | Menghapus tugas |
 
-### Other Features
+#### Chatbot AI (`/api/v1/chatbot`)
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/api/v1/chatbot` | Chat dengan AI asisten |
-| `GET` | `/api/v1/places/nearby` | Cari tempat sekitar (lat, lng) |
+| `POST` | `/api/v1/chatbot` | Mengobrol dengan AI pembantu tugas (*task-help*) |
+| `POST` | `/api/v1/chatbot/place-recommendation` | Rekomendasi tempat berbasis AI chatbot |
+
+#### Tempat & Favorit
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/places/nearby` | Cari tempat penting (ATK/Makanan) sekitar koordinat |
+| `POST` | `/api/v1/places/recommend` | Rekomendasi tempat berbasis AI khusus |
+| `GET` | `/api/v1/favorites` | List tempat yang difavoritkan |
+| `POST` | `/api/v1/favorites` | Menambahkan tempat ke daftar favorit |
+| `DELETE` | `/api/v1/favorites/:placeId` | Menghapus tempat dari favorit |
 
 ---
 
 ## 📁 Struktur Proyek
 ```text
+api/
+└── index.js             # Vercel Serverless Entrypoint (Zero-Config)
+prisma/
+└── schema.prisma        # Skema Prisma & Binary Target Setup
 src/
-├── common/          # Middleware, Config, Validators global
-├── modules/         # Modul fitur (Auth, Task, Chatbot, Place)
-│   ├── [module]/
-│   │   ├── [name].controller.js
-│   │   ├── [name].service.js
-│   │   ├── [name].repository.js
-│   │   └── [name].routes.js
-├── app.js           # Express App setup
-└── server.js        # Entry point
+├── app.js               # Core Express & Global Exception handler
+├── server.js            # Runner Lokal
+├── config/
+│   └── database.js      # Pg Pool global singleton
+├── common/              # Config, Middleware, & Validators global
+└── modules/             # Domain modules (auth, task, chatbot, place, dll)
 ```
