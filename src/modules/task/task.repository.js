@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../../common/config/prisma');
 
 class TaskRepository {
   async findTasksByUserId(userId, { status, skip, take, sortBy }) {

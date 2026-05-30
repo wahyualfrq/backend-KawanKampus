@@ -7,6 +7,9 @@ const authRoutes = require('./modules/auth/auth.routes');
 const taskRoutes = require('./modules/task/task.routes');
 const placeRoutes = require('./modules/place/place.routes');
 const chatbotRoutes = require('./modules/chatbot/chatbot.routes');
+const favoriteRoutes = require('./modules/favorite/favorite.routes');
+const historyRoutes = require('./modules/history/history.routes');
+const settingsRoutes = require('./modules/settings/settings.routes');
 
 const app = express();
 
@@ -18,6 +21,9 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/tasks', taskRoutes);
 app.use('/api/v1/places', placeRoutes);
 app.use('/api/v1/chatbot', chatbotRoutes);
+app.use('/api/v1/favorites', favoriteRoutes);
+app.use('/api/v1/histories', historyRoutes);
+app.use('/api/v1/settings', settingsRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ success: true, message: 'Server is healthy' });

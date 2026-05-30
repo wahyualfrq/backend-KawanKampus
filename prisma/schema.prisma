@@ -10,17 +10,26 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String
+  name        String
+  phone       String?
+  university  String?
+  faculty     String?
+  cohortYear  String?
+  gender      String?
+  bio         String?
+  avatarUrl   String?
+  role        String   @default("Mahasiswa")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  tasks     Task[]
-  favorites Favorite[]
-  histories History[]
-  chatLogs  ChatLog[]
+  tasks       Task[]
+  favorites   Favorite[]
+  histories   History[]
+  chatLogs    ChatLog[]
+  settings    UserSetting?
 
   @@map("users")
 }
@@ -108,4 +117,24 @@ model ChatLog {
 
   @@index([userId])
   @@map("chat_logs")
+}
+
+model UserSetting {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  theme                 String   @default("light")
+  language              String   @default("id")
+  distanceUnit          String   @default("meter")
+  timezone              String   @default("WIB")
+  emailNotifications    Boolean  @default(true)
+  pushNotifications     Boolean  @default(true)
+  chatbotHistoryEnabled Boolean  @default(true)
+  locationAccessEnabled Boolean  @default(true)
+  privacyMode           Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
 }
