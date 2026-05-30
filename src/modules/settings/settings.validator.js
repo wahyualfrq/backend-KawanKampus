@@ -6,6 +6,7 @@ const updateProfileSchema = z.object({
     phone: z.string().nullable().optional(),
     university: z.string().nullable().optional(),
     faculty: z.string().nullable().optional(),
+    prodi: z.string().nullable().optional(),
     cohortYear: z.string().nullable().optional(),
     gender: z.string().nullable().optional(),
     bio: z.string().max(160, 'Bio must be at most 160 characters').nullable().optional(),

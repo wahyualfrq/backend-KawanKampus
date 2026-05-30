@@ -17,6 +17,7 @@ model User {
   phone       String?
   university  String?
   faculty     String?
+  prodi       String?
   cohortYear  String?
   gender      String?
   bio         String?
