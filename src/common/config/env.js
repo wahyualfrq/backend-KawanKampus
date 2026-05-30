@@ -9,5 +9,6 @@ module.exports = {
   googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
   aiApiUrl: process.env.AI_API_URL,
   aiApiKey: process.env.AI_API_KEY,
+  placeRecommenderApiUrl: process.env.PLACE_RECOMMENDER_API_URL,
   redisUrl: process.env.REDIS_URL,
 };

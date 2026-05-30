@@ -1,5 +1,6 @@
 const axios = require('axios');
 const config = require('../../common/config/env');
+const placeRecommenderClient = require('./placeRecommender.client');
 
 // ── Fallback config (from real CSV summary) ─────────────────────────────────
 // Extra "Lainnya" categories from the real CSV
@@ -104,108 +105,11 @@ class PlaceService {
 
   /**
    * GET /places/config
-   * Tries multiple Flask AI endpoints to discover the full campus list.
-   * Falls back to FALLBACK_CONFIG only when ALL Flask attempts fail.
+   * Returns local fallback config only until real Places service/file is provided.
    */
   async getConfig() {
-    const aiApiUrl = config.aiApiUrl;
-    if (aiApiUrl) {
-      // Attempt 1: GET /data/config
-      try {
-        const res = await axios.get(`${aiApiUrl}/data/config`, { timeout: 5000 });
-        const campuses = this._extractCampuses(res.data);
-        if (campuses.length > 0) {
-          console.log(`[PlaceService] Flask /data/config → ${campuses.length} campuses`);
-          return this._buildConfig('flask:/data/config', campuses, res.data);
-        }
-      } catch (e) { console.warn('[PlaceService] Flask /data/config failed:', e.message); }
-
-      // Attempt 2: GET /campuses
-      try {
-        const res = await axios.get(`${aiApiUrl}/campuses`, { timeout: 5000 });
-        const campuses = this._extractCampuses(res.data);
-        if (campuses.length > 0) {
-          console.log(`[PlaceService] Flask /campuses → ${campuses.length} campuses`);
-          return this._buildConfig('flask:/campuses', campuses, {});
-        }
-      } catch (e) { console.warn('[PlaceService] Flask /campuses failed:', e.message); }
-
-      // Attempt 3: GET /data  (some Flask apps expose raw data summary here)
-      try {
-        const res = await axios.get(`${aiApiUrl}/data`, { timeout: 5000 });
-        const campuses = this._extractCampuses(res.data);
-        if (campuses.length > 0) {
-          console.log(`[PlaceService] Flask /data → ${campuses.length} campuses`);
-          return this._buildConfig('flask:/data', campuses, {});
-        }
-      } catch (e) { console.warn('[PlaceService] Flask /data failed:', e.message); }
-
-      // Attempt 4: POST /chat with special_action=list_campuses
-      try {
-        const res = await axios.post(`${aiApiUrl}/chat`, {
-          special_action: 'list_campuses',
-          user_id: 'system',
-          session_id: `config_${Date.now()}`,
-        }, { timeout: 8000 });
-        const campuses = this._extractCampuses(res.data);
-        if (campuses.length > 0) {
-          console.log(`[PlaceService] Flask /chat list_campuses → ${campuses.length} campuses`);
-          return this._buildConfig('flask:/chat', campuses, {});
-        }
-      } catch (e) { console.warn('[PlaceService] Flask /chat list_campuses failed:', e.message); }
-    }
-
-    console.info('[PlaceService] All Flask attempts failed → using hardcoded fallback config');
+    console.info('[PlaceService] Using local fallback config for Places config');
     return { ...FALLBACK_CONFIG };
-  }
-
-  /** Extract campus objects from any Flask response shape */
-  _extractCampuses(data) {
-    if (!data) return [];
-
-    // Shape: { campuses: [...] } or { campus_list: [...] } or { data: [...] } or { kampus: [...] }
-    const list =
-      (Array.isArray(data.campuses)     && data.campuses)     ||
-      (Array.isArray(data.campus_list)  && data.campus_list)  ||
-      (Array.isArray(data.Kampus)       && data.Kampus)        ||
-      (Array.isArray(data.kampus)       && data.kampus)        ||
-      (Array.isArray(data.kampus_list)  && data.kampus_list)   ||
-      (Array.isArray(data.universities) && data.universities)  ||
-      (Array.isArray(data.data)         && data.data)          ||
-      (Array.isArray(data)              && data)               ||
-      [];
-
-    return list
-      .map(c => {
-        const rawName = typeof c === 'string' ? c : (c.name || c.Kampus || c.campus || c.university || '');
-        const name = rawName.trim();
-        if (!name) return null;
-        // Use our known coordinates if available, otherwise null (no demo mode for unknown campuses)
-        const known = FALLBACK_CONFIG.campusCenters?.[name];
-        return {
-          name,
-          lat: c.lat ?? c.latitude  ?? known?.lat ?? null,
-          lon: c.lon ?? c.longitude ?? c.lng ?? known?.lon ?? null,
-        };
-      })
-      .filter(Boolean);
-  }
-
-  /** Merge extracted campuses with the full FALLBACK_CONFIG structure */
-  _buildConfig(source, campuses, flaskData) {
-    return {
-      ...FALLBACK_CONFIG,
-      source,
-      campuses,
-      // Keep our known campus centers for any campus we have coords for
-      campusCenters: campuses.reduce((acc, c) => {
-        if (c.lat && c.lon) acc[c.name] = { lat: c.lat, lon: c.lon };
-        return acc;
-      }, { ...FALLBACK_CONFIG.campusCenters }),
-      categoryGroups:   flaskData.categoryGroups   || FALLBACK_CONFIG.categoryGroups,
-      categoryApiValue: flaskData.categoryApiValue || FALLBACK_CONFIG.categoryApiValue,
-      lainnyaCategories: flaskData.lainnyaCategories || FALLBACK_CONFIG.lainnyaCategories,
-    };
   }
 
   /**
@@ -232,11 +136,17 @@ class PlaceService {
   }
 
   /**
-   * POST /places/recommend — calls Flask AI, normalises response.
+   * POST /places/recommend — calls future place recommender client, normalises response.
    */
   async getRecommendations(userId, { selected_uni, selected_cat, lat, lon, session_id }) {
-    const aiApiUrl = config.aiApiUrl;
-    if (!aiApiUrl) throw new Error('AI_API_URL is not configured in .env');
+    if (!placeRecommenderClient.isConfigured()) {
+      return {
+        success: false,
+        code: "PLACE_RECOMMENDER_NOT_CONFIGURED",
+        message: "Place recommendation service is not configured yet.",
+        data: []
+      };
+    }
 
     const payload = {
       user_id: userId,
@@ -249,16 +159,8 @@ class PlaceService {
     };
 
     try {
-      const response = await axios.post(`${aiApiUrl}/chat`, payload, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 30000,
-      });
-      if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
-        console.log('RAW AI PLACE RESPONSE:', JSON.stringify(response.data, null, 2));
-      }
-      const data = response.data;
-      const rawList = data?.recommendations || data?.results || data?.data ||
-        (Array.isArray(data) ? data : null);
+      const result = await placeRecommenderClient.fetchPlaceRecommendations(payload);
+      const rawList = result.recommendations || [];
 
       if (Array.isArray(rawList)) {
         // Save history log
@@ -282,16 +184,10 @@ class PlaceService {
         return rawList.map((item, idx) => this._normalizeItem(item, idx, selected_cat));
       }
 
-      // Freeform text fallback
-      return [{
-        id: '1', rank: 1, name: 'Rekomendasi AI', category: selected_cat,
-        distanceMeters: null, distanceText: '-',
-        address: typeof data?.response === 'string' ? data.response : JSON.stringify(data),
-        description: '', mapLink: '', rating: null, lat: null, lon: null,
-      }];
+      return [];
     } catch (error) {
-      console.error('[PlaceService] getRecommendations error:', error.response?.data || error.message);
-      const err = new Error('Gagal mendapatkan rekomendasi tempat dari layanan AI.');
+      console.error('[PlaceService] getRecommendations error:', error.message);
+      const err = new Error('Gagal mendapatkan rekomendasi tempat dari layanan rekomendasi.');
       err.statusCode = 502; throw err;
     }
   }

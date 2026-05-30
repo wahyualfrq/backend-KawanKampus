@@ -3,7 +3,7 @@ const placeService = require('./place.service');
 class PlaceController {
   /**
    * GET /api/v1/places/config  (PUBLIC — no auth required)
-   * Returns campus list + category mapping from Flask AI or fallback.
+   * Returns campus list + category mapping from local fallback config.
    */
   async getConfig(req, res, next) {
     try {
@@ -11,10 +11,8 @@ class PlaceController {
       res.status(200).json({
         success: true,
         data: cfg,
-        source: cfg.source,
-        message: cfg.source && cfg.source.startsWith('flask')
-          ? 'Config retrieved from Flask AI'
-          : 'Config retrieved from fallback (Flask unavailable)',
+        source: cfg.source || 'fallback',
+        message: 'Config retrieved from local fallback config',
       });
     } catch (error) {
       next(error);
@@ -54,6 +52,11 @@ class PlaceController {
         lon,
         session_id,
       });
+
+      // Handle controlled service-unavailable state cleanly
+      if (recommendations && recommendations.success === false) {
+        return res.status(200).json(recommendations);
+      }
 
       res.status(200).json({
         success: true,
