@@ -4,11 +4,19 @@
   "description": "",
   "main": "src/server.js",
   "scripts": {
+<<<<<<< Updated upstream
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio"
+=======
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "prisma:generate": "npx prisma generate",
+    "prisma:push": "npx prisma db push",
+    "test": "echo \"Error: no test specified\" && exit 1"
+>>>>>>> Stashed changes
   },
   "keywords": [],
   "author": "",
