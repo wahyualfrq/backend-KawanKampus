@@ -15,6 +15,7 @@ const recommendPlacesSchema = z.object({
     lat: z.number({ required_error: 'lat is required' }),
     lon: z.number({ required_error: 'lon is required' }),
     session_id: z.string().optional(),
+    actual_category: z.string().optional(),
   }),
 });
 

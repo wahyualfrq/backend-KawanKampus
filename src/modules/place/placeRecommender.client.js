@@ -14,134 +14,263 @@ const CAMPUS_CENTERS = {
 };
 
 function getDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371; // Radius of the earth in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c; // Distance in km
-}
 
-function getKategoriJarak(campusName, lat, lon) {
-  if (!campusName || lat == null || lon == null || isNaN(lat) || isNaN(lon)) {
-    return 'Perlu Motor';
-  }
-  const key = campusName.toLowerCase().trim();
-  const center = CAMPUS_CENTERS[key];
-  if (!center) {
-    return 'Perlu Motor';
-  }
-  const dist = getDistance(lat, lon, center.lat, center.lon);
-  return dist <= 1.0 ? 'Jalan Kaki' : 'Perlu Motor';
-}
-
-function getKategori(selectedCat) {
-  if (!selectedCat) return 'Cetak';
-  const catLower = selectedCat.toLowerCase().trim();
-  if (catLower.includes('makan') || catLower === 'makanan') {
-    return 'Makanan';
-  }
-  if (catLower.includes('minum') || catLower === 'minuman' || catLower.includes('cafe') || catLower.includes('kopi')) {
-    return 'Minuman';
-  }
-  if (catLower.includes('cetak') || catLower.includes('print') || catLower.includes('fotokopi') || catLower.includes('atk')) {
-    return 'Cetak';
-  }
-  return selectedCat.charAt(0).toUpperCase() + selectedCat.slice(1).toLowerCase();
+  return R * c;
 }
 
 function formatCampusName(campusName) {
   if (!campusName) return '';
-  const lower = campusName.toLowerCase().trim();
+
+  const lower = String(campusName).toLowerCase().trim();
+
   if (lower.includes('multi data palembang')) {
     return 'Universitas Multi Data Palembang';
   }
+
   if (lower.includes('gadjah mada')) {
     return 'Universitas Gadjah Mada';
   }
+
   if (lower.includes('airlangga')) {
     return 'Universitas Airlangga - B';
   }
+
   if (lower.includes('bina nusantara')) {
     return 'Universitas Bina Nusantara @Anggrek';
   }
+
   if (lower.includes('itb') || lower.includes('institut teknologi bandung')) {
     return 'Universitas Institut Teknologi Bandung - Ganesha';
   }
+
   if (lower.includes('brawijaya')) {
     return 'Universitas Brawijaya';
   }
+
   if (lower.includes('ikmi cirebon')) {
     return 'STMIK IKMI CIREBON';
   }
+
   if (lower.includes('universitas indonesia')) {
     return 'Universitas Indonesia';
   }
+
   if (lower.includes('pendidikan indonesia bandung')) {
     return 'Universitas Pendidikan Indonesia Bandung';
   }
-  return campusName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
+  return String(campusName)
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
 }
 
-/**
- * Checks if the PLACE_RECOMMENDER_API_URL environment variable is configured safely.
- * Considers null, undefined, empty string, and whitespace-only string as "not configured".
- */
+function getKategori(selectedCat) {
+  if (!selectedCat) return 'Cetak';
+
+  const catLower = String(selectedCat).toLowerCase().trim();
+
+  if (
+    catLower.includes('makan') ||
+    catLower.includes('restoran') ||
+    catLower.includes('restaurant') ||
+    catLower.includes('warteg') ||
+    catLower.includes('pizza')
+  ) {
+    return 'Makanan';
+  }
+
+  if (
+    catLower.includes('minum') ||
+    catLower.includes('cafe') ||
+    catLower.includes('kafe') ||
+    catLower.includes('kedai') ||
+    catLower.includes('kopi')
+  ) {
+    return 'Minuman';
+  }
+
+  if (
+    catLower.includes('cetak') ||
+    catLower.includes('print') ||
+    catLower.includes('fotokopi') ||
+    catLower.includes('fotocopy') ||
+    catLower.includes('atk')
+  ) {
+    return 'Cetak';
+  }
+
+  return String(selectedCat).charAt(0).toUpperCase() + String(selectedCat).slice(1).toLowerCase();
+}
+
+function getKategoriJarak(campusName, lat, lon) {
+  if (!campusName || lat == null || lon == null || Number.isNaN(Number(lat)) || Number.isNaN(Number(lon))) {
+    return 'Perlu Motor';
+  }
+
+  const key = String(campusName).toLowerCase().trim();
+  const center = CAMPUS_CENTERS[key];
+
+  if (!center) {
+    return 'Perlu Motor';
+  }
+
+  const distanceKm = getDistance(Number(lat), Number(lon), center.lat, center.lon);
+
+  return distanceKm <= 1.0 ? 'Jalan Kaki' : 'Perlu Motor';
+}
+
 function isConfigured() {
-  const url = config.placeRecommenderApiUrl;
+  const url = config.recommendationApiUrl;
+
   if (url === null || url === undefined) {
     return false;
   }
+
   if (typeof url !== 'string') {
     return false;
   }
+
   if (url.trim() === '') {
     return false;
   }
+
   return true;
 }
 
-/**
- * Connect to future Place Recommender API when PLACE_RECOMMENDER_API_URL is provided.
- * If not configured, returns an object indicating configured: false.
- */
+function extractRecommendations(raw) {
+  if (Array.isArray(raw)) {
+    return raw;
+  }
+
+  if (!raw || typeof raw !== 'object') {
+    return [];
+  }
+
+  if (Array.isArray(raw.value)) {
+    return raw.value;
+  }
+
+  if (Array.isArray(raw.recommendations)) {
+    return raw.recommendations;
+  }
+
+  if (Array.isArray(raw.results)) {
+    return raw.results;
+  }
+
+  if (Array.isArray(raw.data)) {
+    return raw.data;
+  }
+
+  if (raw.data && Array.isArray(raw.data.recommendations)) {
+    return raw.data.recommendations;
+  }
+
+  if (raw.data && Array.isArray(raw.data.results)) {
+    return raw.data.results;
+  }
+
+  return [];
+}
+
+function buildRecommendationPayload(payload = {}) {
+  const selectedCampus = payload.selected_uni || payload.kampus || payload.campus || '';
+  const selectedCategory = payload.selected_cat || payload.kategori || payload.category || 'Cetak';
+
+  const latitude = payload.latitude ?? payload.lat;
+  const longitude = payload.longitude ?? payload.lon ?? payload.lng;
+
+  return {
+    kampus: formatCampusName(selectedCampus),
+    kategori: getKategori(selectedCategory),
+    kategori_jarak:
+      payload.kategori_jarak ||
+      payload.kategoriJarak ||
+      getKategoriJarak(selectedCampus, latitude, longitude),
+    latitude: Number(latitude),
+    longitude: Number(longitude),
+    top_n: payload.top_n || payload.topN || 15,
+  };
+}
+
+function buildServiceError(error) {
+  if (error.response && error.response.data) {
+    const detail = error.response.data.detail;
+    let message = '';
+
+    if (Array.isArray(detail)) {
+      message = detail.map((item) => item.msg || item.message || JSON.stringify(item)).join(', ');
+    } else if (typeof detail === 'string') {
+      message = detail;
+    } else if (error.response.data.message) {
+      message = error.response.data.message;
+    } else if (error.response.data.error) {
+      message = error.response.data.error;
+    }
+
+    const serviceError = new Error(message || 'Layanan rekomendasi menolak permintaan.');
+    serviceError.statusCode = error.response.status;
+    return serviceError;
+  }
+
+  return error;
+}
+
 async function fetchPlaceRecommendations(payload) {
   if (!isConfigured()) {
     return {
       configured: false,
-      recommendations: []
+      recommendations: [],
     };
   }
 
+  const apiPayload = buildRecommendationPayload(payload);
+  const url = `${config.recommendationApiUrl.replace(/\/$/, '')}/recommend`;
+
   try {
-    const apiPayload = {
-      kampus: formatCampusName(payload.selected_uni),
-      kategori: getKategori(payload.selected_cat),
-      kategori_jarak: getKategoriJarak(payload.selected_uni, payload.lat, payload.lon),
-      top_n: 10
-    };
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[PlaceRecommenderClient] URL:', url);
+      console.log('[PlaceRecommenderClient] FINAL PAYLOAD TO /recommend:', JSON.stringify(apiPayload, null, 2));
+    }
 
-    console.log('[PlaceRecommenderClient] Calling external API:', `${config.placeRecommenderApiUrl}/recommend`, apiPayload);
-
-    const response = await axios.post(`${config.placeRecommenderApiUrl}/recommend`, apiPayload, {
+    const response = await axios.post(url, apiPayload, {
       headers: { 'Content-Type': 'application/json' },
-      timeout: 15000
+      timeout: 15000,
     });
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[PlaceRecommenderClient] RAW RESPONSE:', JSON.stringify(response.data, null, 2));
+    }
 
     return {
       configured: true,
-      recommendations: response.data || []
+      recommendations: extractRecommendations(response.data),
+      raw: response.data,
     };
   } catch (error) {
-    console.error('[PlaceRecommenderClient Error]', error.message);
-    throw error;
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[PlaceRecommenderClient Error]', error.message);
+    }
+
+    throw buildServiceError(error);
   }
 }
 
 module.exports = {
   isConfigured,
-  fetchPlaceRecommendations
+  fetchPlaceRecommendations,
 };
