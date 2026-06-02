@@ -62,6 +62,7 @@ model Place {
   googleId    String   @unique
   name        String
   category    Category
+  rawCategory String?
   address     String
   lat         Float
   lng         Float

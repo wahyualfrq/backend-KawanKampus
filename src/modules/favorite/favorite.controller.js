@@ -24,18 +24,24 @@ class FavoriteController {
         include: { place: true }
       });
 
-      const formatted = favorites.map(fav => ({
-        id: fav.id,
-        placeId: fav.place.id,
-        googleId: fav.place.googleId,
-        name: fav.place.name,
-        category: mapPrismaCategoryToFrontend(fav.place.category),
-        address: fav.place.address,
-        lat: fav.place.lat,
-        lon: fav.place.lng,
-        mapLink: fav.place.googleId,
-        createdAt: fav.createdAt
-      }));
+      const formatted = favorites.map(fav => {
+        const mappedEnumCategory = mapPrismaCategoryToFrontend(fav.place.category);
+        return {
+          id: fav.id,
+          placeId: fav.place.id,
+          googleId: fav.place.googleId,
+          name: fav.place.name,
+          category: fav.place.rawCategory || mappedEnumCategory,
+          broadCategory: mappedEnumCategory,
+          rawCategory: fav.place.rawCategory,
+          address: fav.place.address,
+          lat: fav.place.lat,
+          lon: fav.place.lng,
+          lng: fav.place.lng,
+          mapLink: fav.place.googleId,
+          createdAt: fav.createdAt
+        };
+      });
 
       res.status(200).json({
         success: true,
@@ -55,6 +61,8 @@ class FavoriteController {
       if (!name) {
         return res.status(400).json({ success: false, message: 'Name is required' });
       }
+
+      const rawCategoryVal = req.body.rawCategory || req.body.originalCategory || req.body.category || null;
 
       // Generate a stable googleId
       const googleId = mapLink || `${name}_${category || 'ATK'}_${lat || 0}_${lng || lon || 0}`;
@@ -80,11 +88,19 @@ class FavoriteController {
             googleId,
             name,
             category: mapCategoryToPrisma(category),
+            rawCategory: rawCategoryVal,
             address: address || '',
             lat: parsedLat,
             lng: parsedLng,
           }
         });
+      } else {
+        if (place.rawCategory !== rawCategoryVal) {
+          place = await prisma.place.update({
+            where: { id: place.id },
+            data: { rawCategory: rawCategoryVal }
+          });
+        }
       }
 
       // Create favorite
@@ -110,7 +126,7 @@ class FavoriteController {
           metadata: {
             placeId: place.id,
             name: place.name,
-            category: mapPrismaCategoryToFrontend(place.category),
+            category: place.rawCategory || mapPrismaCategoryToFrontend(place.category),
             address: place.address,
             mapLink: place.googleId
           }
@@ -124,10 +140,13 @@ class FavoriteController {
           placeId: place.id,
           googleId: place.googleId,
           name: place.name,
-          category: mapPrismaCategoryToFrontend(place.category),
+          category: place.rawCategory || mapPrismaCategoryToFrontend(place.category),
+          broadCategory: mapPrismaCategoryToFrontend(place.category),
+          rawCategory: place.rawCategory,
           address: place.address,
           lat: place.lat,
           lon: place.lng,
+          lng: place.lng,
           mapLink: place.googleId
         },
         message: 'Place added to favorites'
