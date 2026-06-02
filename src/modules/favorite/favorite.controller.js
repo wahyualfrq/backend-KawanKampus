@@ -55,7 +55,7 @@ class FavoriteController {
 
   async addFavorite(req, res, next) {
     try {
-      const { name, category, address, lat, lng, lon, mapLink } = req.body;
+      const { name, category, address, lat, lng, lon, mapLink, campus } = req.body;
       const userId = req.user.userId;
 
       if (!name) {
@@ -118,20 +118,25 @@ class FavoriteController {
         update: {}
       });
 
-      // Save History Activity
-      await prisma.history.create({
-        data: {
-          userId,
-          action: 'SAVED_FAVORITE',
-          metadata: {
-            placeId: place.id,
-            name: place.name,
-            category: place.rawCategory || mapPrismaCategoryToFrontend(place.category),
-            address: place.address,
-            mapLink: place.googleId
+      // Save History Activity (best-effort)
+      try {
+        await prisma.history.create({
+          data: {
+            userId,
+            action: 'SAVED_FAVORITE',
+            metadata: {
+              placeId: place.id,
+              placeName: place.name,
+              category: mapPrismaCategoryToFrontend(place.category),
+              rawCategory: place.rawCategory || category,
+              campus: campus || '',
+              mapLink: place.googleId || mapLink || ''
+            }
           }
-        }
-      });
+        });
+      } catch (e) {
+        console.warn('[FavoriteController] Failed to save SAVED_FAVORITE history:', e.message);
+      }
 
       res.status(201).json({
         success: true,
@@ -161,7 +166,7 @@ class FavoriteController {
       const { placeId } = req.params;
       const userId = req.user.userId;
 
-      // Find the favorite mapping
+      // Find the favorite mapping with its associated place details
       const fav = await prisma.favorite.findFirst({
         where: {
           userId,
@@ -170,6 +175,9 @@ class FavoriteController {
             { placeId: placeId },
             { place: { googleId: placeId } }
           ]
+        },
+        include: {
+          place: true
         }
       });
 
@@ -177,9 +185,31 @@ class FavoriteController {
         return res.status(404).json({ success: false, message: 'Favorite not found' });
       }
 
+      const placeDetails = fav.place;
+
       await prisma.favorite.delete({
         where: { id: fav.id }
       });
+
+      // Save History Activity (best-effort)
+      try {
+        if (placeDetails) {
+          await prisma.history.create({
+            data: {
+              userId,
+              action: 'REMOVED_FAVORITE',
+              metadata: {
+                placeId: placeDetails.id,
+                placeName: placeDetails.name,
+                category: mapPrismaCategoryToFrontend(placeDetails.category),
+                rawCategory: placeDetails.rawCategory || mapPrismaCategoryToFrontend(placeDetails.category)
+              }
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('[FavoriteController] Failed to save REMOVED_FAVORITE history:', e.message);
+      }
 
       res.status(200).json({
         success: true,
