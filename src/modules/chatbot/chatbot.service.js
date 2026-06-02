@@ -73,7 +73,6 @@ class ChatbotService {
         response.data?.message ||
         'Maaf, saya tidak dapat memproses permintaan saat ini.';
 
-      // Save to ChatLog (best-effort — don't fail the request if DB save fails)
       try {
         await prisma.chatLog.create({
           data: {
@@ -83,6 +82,13 @@ class ChatbotService {
             context: { session_id: payload.session_id, task_mode: true },
           },
         });
+      } catch (dbErr) {
+        console.warn('[ChatbotService] Failed to save ChatLog:', dbErr.message);
+      }
+
+      try {
+        const messagePreview = message.length > 120 ? `${message.substring(0, 117)}...` : message;
+        const responsePreview = aiReply.length > 160 ? `${aiReply.substring(0, 157)}...` : aiReply;
 
         // Save History log
         await prisma.history.create({
@@ -90,13 +96,14 @@ class ChatbotService {
             userId,
             action: 'ASKED_CHATBOT',
             metadata: {
-              message: message.length > 120 ? `${message.substring(0, 120)}...` : message,
-              response: aiReply.length > 120 ? `${aiReply.substring(0, 120)}...` : aiReply
+              messagePreview,
+              responsePreview,
+              mode: 'chat'
             }
           }
         });
       } catch (dbErr) {
-        console.warn('[ChatbotService] Failed to save ChatLog/History:', dbErr.message);
+        console.warn('[ChatbotService] Failed to save History:', dbErr.message);
       }
 
       return { reply: aiReply, source: 'ai' };
@@ -184,16 +191,26 @@ class ChatbotService {
             },
           },
         });
+      } catch (dbErr) {
+        console.warn('[ChatbotService] Failed to save place recommendation ChatLog:', dbErr.message);
+      }
 
+      try {
         await prisma.history.create({
           data: {
             userId,
             action:   'SEARCHED_PLACE',
-            metadata: { campus: selected_uni, category: selected_cat, resultCount: recommendations.length },
+            metadata: {
+              campus: selected_uni,
+              category: selected_cat,
+              resultCount: recommendations.length,
+              rawCategoriesUsed: [selected_cat],
+              source: "chatbot_recommendation"
+            },
           },
         });
       } catch (dbErr) {
-        console.warn('[ChatbotService] Failed to save place recommendation ChatLog/History:', dbErr.message);
+        console.warn('[ChatbotService] Failed to save place recommendation History:', dbErr.message);
       }
 
       return { reply: replyText, recommendations };

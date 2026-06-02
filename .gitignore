@@ -1,6 +1,23 @@
+# Dependencies
 node_modules/
-.env
+
+# Production
 dist/
+build/
+
+# Coverage
 coverage/
-.DS_Store
+
+# Logs
 *.log
+logs/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# IDEs/System
+.DS_Store
+.vscode/
+.idea/

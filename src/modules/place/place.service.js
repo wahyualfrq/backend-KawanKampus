@@ -365,20 +365,6 @@ class PlaceService {
       throw err;
     }
 
-    // Save history log (best-effort)
-    try {
-      const prisma = require('../../common/config/prisma');
-      await prisma.history.create({
-        data: {
-          userId,
-          action: 'SEARCHED_PLACE',
-          metadata: { campus: selected_uni, category: selected_cat, resultCount: rawList.length }
-        }
-      });
-    } catch (e) {
-      console.warn('[PlaceService] Failed to save search history log:', e.message);
-    }
-
     // Normalize
     const normalizedList = rawList.map((item, idx) =>
       normalizeItem(item, idx, item.Kategori_Awal || selected_cat, campusLat, campusLon)
@@ -404,6 +390,26 @@ class PlaceService {
       return place;
     });
 
+    // Save history log (best-effort)
+    try {
+      const prisma = require('../../common/config/prisma');
+      await prisma.history.create({
+        data: {
+          userId,
+          action: 'SEARCHED_PLACE',
+          metadata: {
+            campus: selected_uni,
+            category: selected_cat,
+            resultCount: finalRecommendations.length,
+            rawCategoriesUsed: rawCategories,
+            source: "places_recommendation"
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('[PlaceService] Failed to save search history log:', e.message);
+    }
+
     return {
       selectedCampus:    selected_uni,
       selectedCategory:  selected_cat,
@@ -426,6 +432,7 @@ class PlaceService {
       kategori_jarak: 'Jalan Kaki',
       latitude: campusLat,
       longitude: campusLon,
+      top_n: 15,
     };
 
     if (process.env.NODE_ENV === 'development') {
