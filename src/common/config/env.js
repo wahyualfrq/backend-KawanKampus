@@ -10,6 +10,7 @@ module.exports = {
   aiApiUrl: process.env.AI_API_URL,
   aiApiKey: process.env.AI_API_KEY,
   placeRecommenderApiUrl: process.env.PLACE_RECOMMENDER_API_URL,
+  recommendationApiUrl: process.env.RECOMMENDATION_API_URL,
   redisUrl: process.env.REDIS_URL,
   allowedOrigins: process.env.ALLOWED_ORIGINS,
 };

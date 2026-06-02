@@ -42,7 +42,7 @@ class PlaceController {
    */
   async getRecommendations(req, res, next) {
     try {
-      const { selected_uni, selected_cat, lat, lon, session_id } = req.body;
+      const { selected_uni, selected_cat, lat, lon, session_id, actual_category } = req.body;
       const userId = req.user.userId;
 
       const recommendations = await placeService.getRecommendations(userId, {
@@ -51,6 +51,7 @@ class PlaceController {
         lat,
         lon,
         session_id,
+        actual_category,
       });
 
       // Handle controlled service-unavailable state cleanly

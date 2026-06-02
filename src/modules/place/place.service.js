@@ -1,9 +1,20 @@
 const axios = require('axios');
 const config = require('../../common/config/env');
-const placeRecommenderClient = require('./placeRecommender.client');
 
-// ── Fallback config (from real CSV summary) ─────────────────────────────────
-// Extra "Lainnya" categories from the real CSV
+// ── Campus center coordinates ─────────────────────────────────────────────────
+const CAMPUS_CENTERS = {
+  'Universitas Gadjah Mada':                         { lat: -7.7733153,   lon: 110.3892489  },
+  'Universitas Airlangga - B':                        { lat: -7.2729075,   lon: 112.7560403  },
+  'Universitas Bina Nusantara @Anggrek':              { lat: -6.1950023,   lon: 106.7764187  },
+  'Universitas Institut Teknologi Bandung - Ganesha': { lat: -6.8950712,   lon: 107.6099105  },
+  'Universitas Brawijaya':                            { lat: -7.9508146,   lon: 112.6132311  },
+  'STMIK IKMI CIREBON':                               { lat: -6.7357684,   lon: 108.53979385 },
+  'UNIVERSITAS MULTI DATA PALEMBANG':                 { lat: -2.9737715,   lon: 104.75612    },
+  'Universitas Indonesia':                            { lat: -6.36894785,  lon: 106.83008385 },
+  'Universitas Pendidikan Indonesia Bandung':         { lat: -6.8817098,   lon: 107.5954963  },
+};
+
+// ── Fallback config for GET /places/config ────────────────────────────────────
 const LAINNYA_CATEGORIES = [
   'Apotek', 'Kedai', 'Kedai Kopi', 'Minimarket', 'Perhentian Bus',
   'Pizza', 'Restoran', 'Restoran Padang', 'Tempat Fitness',
@@ -12,76 +23,65 @@ const LAINNYA_CATEGORIES = [
 
 const FALLBACK_CONFIG = {
   source: 'fallback',
-  campuses: [
-    { name: 'Universitas Gadjah Mada',                         lat: -7.7733153,   lon: 110.3892489  },
-    { name: 'Universitas Airlangga - B',                        lat: -7.2729075,   lon: 112.7560403  },
-    { name: 'Universitas Bina Nusantara @Anggrek',              lat: -6.1950023,   lon: 106.7764187  },
-    { name: 'Universitas Institut Teknologi Bandung - Ganesha', lat: -6.8950712,   lon: 107.6099105  },
-    { name: 'Universitas Brawijaya',                            lat: -7.9508146,   lon: 112.6132311  },
-    { name: 'STMIK IKMI CIREBON',                               lat: -6.7357684,   lon: 108.53979385 },
-    { name: 'UNIVERSITAS MULTI DATA PALEMBANG',                 lat: -2.9737715,   lon: 104.75612    },
-    { name: 'Universitas Indonesia',                             lat: -6.36894785,  lon: 106.83008385 },
-    { name: 'Universitas Pendidikan Indonesia Bandung',          lat: -6.8817098,   lon: 107.5954963  },
-  ],
-  // Flat list of all raw Kategori_Awal values available in CSV
+  campuses: Object.entries(CAMPUS_CENTERS).map(([name, { lat, lon }]) => ({ name, lat, lon })),
   categories: [
     'Fotokopi', 'Print', 'Makanan', 'Makanan Siap Saji', 'Restoran',
     'Restoran Padang', 'Pizza', 'Warteg', 'Cafe', 'Kedai Kopi',
     'Kedai', 'Toko Es Krim', 'Apotek', 'Minimarket', 'Perhentian Bus',
     'Tempat Fitness',
   ],
-  // Maps display group → raw Kategori_Awal values
   categoryGroups: {
-    Fotokopi: ['Fotokopi', 'Fotokopi.Csv', 'Fotocopy.Csv', 'Print', 'Print.Csv'],
-    Makanan:  ['Makanan', 'Makanan.Csv', 'Makanan Siap Saji', 'Makanan Siap Saji.Csv',
-               'Restoran', 'Restoran.Csv', 'Restoran Padang', 'Restoran Padang.Csv',
-               'Restaurant.Csv', 'Pizza', 'Pizza.Csv', 'Warteg', 'Warteg.Csv'],
-    Minuman:  ['Cafe', 'Cafe.Csv', 'Kedai Kopi', 'Kedai', 'Kedai.Csv',
-               'Toko Es Krim', 'Toko Es Krim.Csv', 'Toko Eskrim.Csv'],
-    ATK:      ['Print', 'Print.Csv', 'Fotokopi', 'Fotokopi.Csv'],
+    Fotokopi: ['Fotokopi', 'Print'],
+    Makanan:  ['Makanan', 'Restoran', 'Warteg', 'Pizza'],
+    Minuman:  ['Cafe', 'Kedai', 'Kedai Kopi'],
+    ATK:      ['Print', 'Fotokopi'],
     Lainnya:  LAINNYA_CATEGORIES,
   },
-  // Primary API value to send per chip (safe, exists in CSV)
   categoryApiValue: {
     fotokopi: 'Fotokopi',
     makanan:  'Makanan',
     minuman:  'Cafe',
     atk:      'Print',
-    all:      'Fotokopi',
+    all:      'Semua',
   },
-  // Lainnya categories shown in dropdown
   lainnyaCategories: LAINNYA_CATEGORIES,
-  // Campus name → lat/lon for demo mode
-  campusCenters: {
-    'Universitas Gadjah Mada':                         { lat: -7.7733153,  lon: 110.3892489  },
-    'Universitas Airlangga - B':                        { lat: -7.2729075,  lon: 112.7560403  },
-    'Universitas Bina Nusantara @Anggrek':              { lat: -6.1950023,  lon: 106.7764187  },
-    'Universitas Institut Teknologi Bandung - Ganesha': { lat: -6.8950712,  lon: 107.6099105  },
-    'Universitas Brawijaya':                            { lat: -7.9508146,  lon: 112.6132311  },
-    'STMIK IKMI CIREBON':                               { lat: -6.7357684,  lon: 108.53979385 },
-    'UNIVERSITAS MULTI DATA PALEMBANG':                 { lat: -2.9737715,  lon: 104.75612    },
-    'Universitas Indonesia':                             { lat: -6.3689479,  lon: 106.8300839  },
-    'Universitas Pendidikan Indonesia Bandung':          { lat: -6.8817098,  lon: 107.5954963  },
-  },
+  campusCenters: CAMPUS_CENTERS,
 };
 
-// ── Distance helpers ────────────────────────────────────────────────────────
-function extractRawDistance(item) {
-  const candidates = [
-    item.Jarak_KM, item.Jarak_km, item.distance_km,
-    item.distanceMeters, item.distance_m, item.distance_meter,
-    item.distance, item.jarak, item.Jarak,
-    item.distance_label, item.jarak_label, item.distanceText,
-  ];
-  for (const v of candidates) {
-    if (v != null && v !== '') return v;
-  }
-  return null;
+// ── Category expansion map (UI chip → raw AI service categories) ──────────────
+const CATEGORY_EXPANSION = {
+  'Semua':    ['Fotokopi', 'Print', 'Makanan', 'Restoran', 'Cafe', 'Kedai', 'Minimarket', 'Apotek'],
+  'Fotokopi': ['Fotokopi', 'Print'],
+  'ATK':      ['Print', 'Fotokopi'],
+  'Makanan':  ['Makanan', 'Restoran', 'Warteg', 'Pizza'],
+  'Minuman':  ['Cafe', 'Kedai', 'Kedai Kopi'],
+};
+
+// ── Pure utility functions ────────────────────────────────────────────────────
+
+function getHaversineDistance(lat1, lon1, lat2, lon2) {
+  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-function parseDistanceToMeters(value) {
-  if (value == null) return null;
-  if (typeof value === 'number') return (!isFinite(value) || isNaN(value)) ? null : value;
+function formatDistanceLabel(meters) {
+  if (meters == null || typeof meters !== 'number' || isNaN(meters)) return '-';
+  if (meters >= 1000) return `${(meters / 1000).toFixed(1)} km`;
+  return `${Math.round(meters)} m`;
+}
+
+/**
+ * Parse a "📍 Jarak: 359 m" or "1.2 km" or raw number → metres | null.
+ */
+function parseDistanceText(value) {
+  if (value == null || value === '') return null;
+  if (typeof value === 'number') return isFinite(value) && !isNaN(value) ? value : null;
   if (typeof value === 'string') {
     const s = value.trim();
     const kmMatch = s.match(/(\d+[.,]?\d*)\s*km/i);
@@ -94,27 +94,191 @@ function parseDistanceToMeters(value) {
   return null;
 }
 
-function formatDistanceLabel(meters) {
-  if (meters == null || typeof meters !== 'number' || isNaN(meters)) return null;
-  if (meters >= 1000) return `${(meters / 1000).toFixed(1)} km`;
-  return `${Math.round(meters)} m`;
+/**
+ * Extract lat/lon from a Google Maps link.
+ * Handles:
+ *   ?query=lat,lon  |  @lat,lon  |  /search/?...query=lat,lon  |  !3d lat !4d lon
+ */
+function extractCoordsFromMapLink(mapLink) {
+  if (!mapLink) return { lat: null, lon: null };
+
+  const coordsMatch =
+    mapLink.match(/(?:query|q|search\/|@|dir\/)(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/i) ||
+    mapLink.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
+  if (coordsMatch) {
+    const lat = parseFloat(coordsMatch[1]);
+    const lon = parseFloat(coordsMatch[2]);
+    if (!isNaN(lat) && !isNaN(lon)) return { lat, lon };
+  }
+
+  const match3d4d = mapLink.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/i);
+  if (match3d4d) {
+    const lat = parseFloat(match3d4d[1]);
+    const lon = parseFloat(match3d4d[2]);
+    if (!isNaN(lat) && !isNaN(lon)) return { lat, lon };
+  }
+
+  return { lat: null, lon: null };
 }
 
-// ── Service ─────────────────────────────────────────────────────────────────
+function deduplicatePlaces(places) {
+  const seenMapLinks = new Set();
+  const seenNameCats = new Set();
+  const seenNameLocs = new Set();
+  const unique = [];
+
+  for (const place of places) {
+    const mapLinkKey = place.mapLink ? place.mapLink.trim() : null;
+    const nameCatKey = (place.name && place.category) ? `${place.name.toLowerCase().trim()}_${place.category.toLowerCase().trim()}` : null;
+    const nameLocKey = (place.name && place.lat != null && place.lon != null) ? `${place.name.toLowerCase().trim()}_${place.lat}_${place.lon}` : null;
+
+    let isDuplicate = false;
+    if (mapLinkKey && seenMapLinks.has(mapLinkKey)) isDuplicate = true;
+    if (nameCatKey && seenNameCats.has(nameCatKey)) isDuplicate = true;
+    if (nameLocKey && seenNameLocs.has(nameLocKey)) isDuplicate = true;
+
+    if (!isDuplicate) {
+      if (mapLinkKey) seenMapLinks.add(mapLinkKey);
+      if (nameCatKey) seenNameCats.add(nameCatKey);
+      if (nameLocKey) seenNameLocs.add(nameLocKey);
+      unique.push(place);
+    }
+  }
+  return unique;
+}
+
+/**
+ * Extract the raw item list from any recommendation response shape.
+ * Supported: { recommendations }, { results }, { data }, direct array.
+ */
+function extractItemList(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (raw.recommendations && Array.isArray(raw.recommendations)) return raw.recommendations;
+  if (raw.results && Array.isArray(raw.results)) return raw.results;
+  if (raw.data) {
+    if (Array.isArray(raw.data)) return raw.data;
+    if (raw.data.recommendations && Array.isArray(raw.data.recommendations)) return raw.data.recommendations;
+    if (raw.data.results && Array.isArray(raw.data.results)) return raw.data.results;
+  }
+  return [];
+}
+
+/**
+ * Normalize a raw response item into the standard shape.
+ */
+function normalizeItem(item, idx, fallbackCategory, campusLat, campusLon) {
+  const rank = idx + 1;
+
+  // Name mapping: name / nama / Nama_Tempat
+  const name = item.name || item.nama || item.Nama_Tempat || `Tempat ${rank}`;
+
+  // Category mapping: category / kategori / Kategori_Awal
+  let category = item.category || item.kategori || item.Kategori_Awal || '';
+  if (!category && item.hours) {
+    category = item.hours.split(' - ')[0].trim();
+  }
+  if (!category) category = fallbackCategory || '';
+
+  // Map link mapping: mapLink / map_link / Google_Maps_Link
+  const mapLink = item.mapLink || item.map_link || item.Google_Maps_Link || '';
+
+  // Coordinates mapping: lat / latitude / Latitude, lon / lng / longitude / Longitude
+  let parsedLat = null;
+  let parsedLon = null;
+  const rawLat = item.lat ?? item.latitude ?? item.Latitude;
+  const rawLon = item.lon ?? item.lng ?? item.longitude ?? item.Longitude;
+  if (rawLat != null && rawLat !== '') {
+    const pLat = parseFloat(rawLat);
+    if (!isNaN(pLat)) parsedLat = pLat;
+  }
+  if (rawLon != null && rawLon !== '') {
+    const pLon = parseFloat(rawLon);
+    if (!isNaN(pLon)) parsedLon = pLon;
+  }
+
+  // Extract from mapLink if null
+  if ((parsedLat == null || parsedLon == null) && mapLink) {
+    const extracted = extractCoordsFromMapLink(mapLink);
+    if (extracted.lat != null && extracted.lon != null) {
+      parsedLat = extracted.lat;
+      parsedLon = extracted.lon;
+    }
+  }
+
+  const lat = parsedLat;
+  const lon = parsedLon;
+
+  // Distance mapping: distanceText / distance / jarak
+  const rawDistanceText = item.distanceText ?? item.distance ?? item.jarak ?? null;
+
+  let distanceMeters = null;
+  if (campusLat != null && campusLon != null && lat != null && lon != null) {
+    distanceMeters = getHaversineDistance(campusLat, campusLon, lat, lon);
+  }
+
+  if (distanceMeters === null && rawDistanceText !== null) {
+    distanceMeters = parseDistanceText(rawDistanceText);
+  }
+
+  if (distanceMeters === null && item.Jarak_KM != null) {
+    const km = parseFloat(item.Jarak_KM);
+    if (!isNaN(km)) distanceMeters = Math.round(km * 1000);
+  }
+
+  let distanceText = '-';
+  if (distanceMeters !== null && !isNaN(distanceMeters)) {
+    distanceText = formatDistanceLabel(distanceMeters);
+  } else if (rawDistanceText !== null && rawDistanceText !== '') {
+    const parsed = parseDistanceText(rawDistanceText);
+    if (parsed !== null) {
+      distanceMeters = parsed;
+      distanceText = formatDistanceLabel(distanceMeters);
+    } else {
+      distanceText = String(rawDistanceText);
+    }
+  }
+
+  // Rating & Reviews mapping
+  const rawRating = item.rating ?? item.Rating ?? null;
+  const rawReviews = item.reviews ?? item.Total_Reviews ?? item.totalReviews ?? null;
+  const rating = (rawRating !== null && !isNaN(parseFloat(rawRating))) ? parseFloat(rawRating) : null;
+  const reviews = (rawReviews !== null && !isNaN(parseInt(rawReviews, 10))) ? parseInt(rawReviews, 10) : null;
+
+  return {
+    id:             item.id || String(rank),
+    rank,
+    name,
+    category,
+    distanceMeters,
+    distanceText,
+    address:        item.address || item.alamat || item.Alamat || '',
+    description:    item.description || item.deskripsi || item.Deskripsi || item.Tags || '',
+    mapLink,
+    rating,
+    reviews,
+    lat,
+    lon,
+    googleCategory:      item.Kategori_Google    || item.googleCategory    || null,
+    trustScore:          item.Skor_Kepercayaan   != null ? parseFloat(item.Skor_Kepercayaan) : (item.trustScore || null),
+    tags:                item.Tags               || item.tags              || null,
+    popularityCategory:  item.Kategori_Popularitas || item.popularityCategory || null,
+    distanceCategory:    item.Kategori_Jarak     || item.distanceCategory  || null,
+    recommendationScore: item.recommendation_score || item.recommendationScore || null,
+  };
+}
+
+const MAX_RECOMMENDATIONS = 15;
+
+// ── Service class ─────────────────────────────────────────────────────────────
 class PlaceService {
 
-  /**
-   * GET /places/config
-   * Returns local fallback config only until real Places service/file is provided.
-   */
+  /** GET /places/config */
   async getConfig() {
-    console.info('[PlaceService] Using local fallback config for Places config');
     return { ...FALLBACK_CONFIG };
   }
 
-  /**
-   * GET /places/nearby — keeps original Google Maps integration.
-   */
+  /** GET /places/nearby — unchanged Google Maps integration */
   async getNearbyPlaces(lat, lng, category) {
     if (!config.googleMapsApiKey) throw new Error('Google Maps API Key is not configured');
     try {
@@ -136,122 +300,151 @@ class PlaceService {
   }
 
   /**
-   * POST /places/recommend — calls future place recommender client, normalises response.
+   * POST /places/recommend
+   * Uses RECOMMENDATION_API_URL /recommend
+   * Never sends "Semua" directly — expands categories in backend.
    */
-  async getRecommendations(userId, { selected_uni, selected_cat, lat, lon, session_id }) {
-    if (!placeRecommenderClient.isConfigured()) {
+  async getRecommendations(userId, { selected_uni, selected_cat, lat, lon, actual_category }) {
+    // Guard: recommendationApiUrl must be configured
+    if (!config.recommendationApiUrl) {
       return {
         success: false,
-        code: "PLACE_RECOMMENDER_NOT_CONFIGURED",
-        message: "Place recommendation service is not configured yet.",
-        data: []
+        code: 'PLACE_RECOMMENDER_NOT_CONFIGURED',
+        message: 'Layanan rekomendasi tempat belum dikonfigurasi.',
+        recommendations: [],
       };
     }
 
-    const payload = {
-      user_id: userId,
-      session_id: session_id || `session_${userId}_${Date.now()}`,
-      special_action: 'recommendation_proximity',
-      selected_uni,
-      selected_cat,
-      lat: parseFloat(lat),
-      lon: parseFloat(lon),
-    };
-
-    try {
-      const result = await placeRecommenderClient.fetchPlaceRecommendations(payload);
-      const rawList = result.recommendations || [];
-
-      if (Array.isArray(rawList)) {
-        // Save history log
-        try {
-          const prisma = require('../../common/config/prisma');
-          await prisma.history.create({
-            data: {
-              userId,
-              action: 'SEARCHED_PLACE',
-              metadata: {
-                campus: selected_uni,
-                category: selected_cat,
-                resultCount: rawList.length
-              }
-            }
-          });
-        } catch (e) {
-          console.warn('[PlaceService] Failed to save search history log:', e.message);
-        }
-
-        return rawList.map((item, idx) => this._normalizeItem(item, idx, selected_cat));
-      }
-
-      return [];
-    } catch (error) {
-      console.error('[PlaceService] getRecommendations error:', error.message);
-      const err = new Error('Gagal mendapatkan rekomendasi tempat dari layanan rekomendasi.');
-      err.statusCode = 502; throw err;
-    }
-  }
-
-  _normalizeItem(item, idx, fallbackCategory) {
-    const rank = idx + 1;
-    const name     = item.Nama_Tempat || item.name || item.nama || item.Nama || `Tempat ${rank}`;
-    const category = item.Kategori_Awal || item.category || item.kategori || item.Kategori || fallbackCategory || '';
-    const mapLink  = item.Google_Maps_Link || item.mapLink || item.map_link || item.maps_url || item.google_maps_url || '';
-    
-    // Parse coordinates if they are provided, otherwise extract from mapLink query
-    let lat = item.Latitude  || item.lat  || item.latitude  || null;
-    let lon = item.Longitude || item.lon  || item.lng       || item.longitude || null;
-
-    let parsedLat = lat !== null ? parseFloat(lat) : null;
-    let parsedLon = lon !== null ? parseFloat(lon) : null;
-
-    if ((parsedLat === null || parsedLon === null || isNaN(parsedLat) || isNaN(parsedLon)) && mapLink) {
-      const coordsMatch = mapLink.match(/(?:query|q|search\/|@)(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/i) ||
-                          mapLink.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
-      if (coordsMatch) {
-        const latVal = parseFloat(coordsMatch[1]);
-        const lonVal = parseFloat(coordsMatch[2]);
-        if (!isNaN(latVal) && !isNaN(lonVal)) {
-          parsedLat = latVal;
-          parsedLon = lonVal;
-        }
-      }
+    // Input validation
+    if (!selected_uni || !selected_cat) {
+      const err = new Error('Parameter pencarian tidak lengkap.');
+      err.statusCode = 400;
+      throw err;
     }
 
-    const address  = item.address || item.alamat || item.Alamat || '';
-    const rawRating = item.Rating || item.rating;
+    // Always use campus center coordinates — never browser geolocation
+    const campusCenter = CAMPUS_CENTERS[selected_uni];
+    if (!campusCenter) {
+      const err = new Error('Kampus tidak didukung.');
+      err.statusCode = 400;
+      throw err;
+    }
+    const campusLat = campusCenter.lat;
+    const campusLon = campusCenter.lon;
 
-    // Distance — Jarak_KM is km in the CSV
-    let distanceMeters = null;
-    if (item.Jarak_KM != null) {
-      const km = parseFloat(item.Jarak_KM);
-      distanceMeters = isNaN(km) ? null : Math.round(km * 1000);
+    // Expand UI category → raw category list for AI service
+    let rawCategories;
+    if (CATEGORY_EXPANSION[selected_cat]) {
+      rawCategories = CATEGORY_EXPANSION[selected_cat];
+    } else if (selected_cat === 'Lainnya' && actual_category) {
+      rawCategories = [actual_category];
     } else {
-      const raw = extractRawDistance(item);
-      distanceMeters = parseDistanceToMeters(raw);
-      // If field name contains 'km' and value looks like km (<50), convert
-      const isKmField = ['distance_km', 'Jarak_km'].some(k => item[k] != null);
-      if (isKmField && typeof raw === 'number' && raw < 50) distanceMeters = Math.round(raw * 1000);
+      rawCategories = [selected_cat];
     }
 
-    const rawReviews = item.Total_Reviews || item.total_reviews || item.reviewCount || item.reviews;
-    const reviews = rawReviews != null && !isNaN(parseInt(rawReviews, 10)) ? parseInt(rawReviews, 10) : null;
+    // Query all raw categories in parallel — skip failures
+    const tasks = rawCategories.map(cat => this._fetchSingleCategory(userId, selected_uni, cat, campusLat, campusLon));
+    const results = await Promise.allSettled(tasks);
+
+    let hasSuccessfulCall = false;
+    let rawList = [];
+
+    for (const res of results) {
+      if (res.status === 'fulfilled') {
+        hasSuccessfulCall = true;
+        rawList.push(...res.value);
+      } else {
+        console.warn('[PlaceService] Category fetch failed:', res.reason?.message || res.reason);
+      }
+    }
+
+    // All categories failed → service error
+    if (!hasSuccessfulCall) {
+      const err = new Error('Layanan rekomendasi sedang bermasalah. Coba lagi nanti.');
+      err.statusCode = 502;
+      throw err;
+    }
+
+    // Save history log (best-effort)
+    try {
+      const prisma = require('../../common/config/prisma');
+      await prisma.history.create({
+        data: {
+          userId,
+          action: 'SEARCHED_PLACE',
+          metadata: { campus: selected_uni, category: selected_cat, resultCount: rawList.length }
+        }
+      });
+    } catch (e) {
+      console.warn('[PlaceService] Failed to save search history log:', e.message);
+    }
+
+    // Normalize
+    const normalizedList = rawList.map((item, idx) =>
+      normalizeItem(item, idx, item.Kategori_Awal || selected_cat, campusLat, campusLon)
+    );
+
+    // Deduplicate
+    const uniqueList = deduplicatePlaces(normalizedList);
+
+    // Sort by distance ascending (nulls last)
+    uniqueList.sort((a, b) => {
+      if (a.distanceMeters == null && b.distanceMeters == null) return 0;
+      if (a.distanceMeters == null) return 1;
+      if (b.distanceMeters == null) return -1;
+      return a.distanceMeters - b.distanceMeters;
+    });
+
+    const totalBeforeLimit = uniqueList.length;
+
+    // Top 15
+    const finalRecommendations = uniqueList.slice(0, MAX_RECOMMENDATIONS).map((place, idx) => {
+      place.rank = idx + 1;
+      place.id   = place.id || String(idx + 1);
+      return place;
+    });
 
     return {
-      id:             item.id || String(rank),
-      rank,
-      name,
-      category,
-      distanceMeters,
-      distanceText:   formatDistanceLabel(distanceMeters) || '-',
-      address,
-      description:    item.description || item.deskripsi || item.Deskripsi || item.Tags || '',
-      mapLink,
-      rating:         rawRating != null && !isNaN(parseFloat(rawRating)) ? parseFloat(rawRating) : null,
-      reviews,
-      lat:            parsedLat && !isNaN(parsedLat) ? parsedLat : null,
-      lon:            parsedLon && !isNaN(parsedLon) ? parsedLon : null,
+      selectedCampus:    selected_uni,
+      selectedCategory:  selected_cat,
+      rawCategoriesUsed: rawCategories,
+      totalBeforeLimit,
+      returnedCount:     finalRecommendations.length,
+      limit:             MAX_RECOMMENDATIONS,
+      recommendations:   finalRecommendations,
     };
+  }
+
+  /**
+   * Calls RECOMMENDATION_API_URL/recommend
+   */
+  async _fetchSingleCategory(userId, selected_uni, rawCategory, campusLat, campusLon) {
+    const url = `${config.recommendationApiUrl}/recommend`;
+    const payload = {
+      kampus: selected_uni,
+      kategori: rawCategory,
+      kategori_jarak: 'Jalan Kaki',
+      latitude: campusLat,
+      longitude: campusLon,
+    };
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log("PLACES USING RECOMMENDATION_API_URL:", config.recommendationApiUrl);
+      console.log("OUTGOING RECOMMENDATION URL:", url);
+      console.log("OUTGOING RECOMMENDATION PAYLOAD:", JSON.stringify(payload, null, 2));
+    }
+
+    const response = await axios.post(url, payload, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 15000,
+    });
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log("RAW RECOMMENDATION RESPONSE:", JSON.stringify(response.data, null, 2));
+    }
+
+    const list = extractItemList(response.data);
+    return Array.isArray(list) ? list : [];
   }
 }
 
