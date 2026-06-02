@@ -73,37 +73,51 @@ class ChatbotService {
         response.data?.message ||
         'Maaf, saya tidak dapat memproses permintaan saat ini.';
 
+      let chatbotHistoryEnabled = true;
       try {
-        await prisma.chatLog.create({
-          data: {
-            userId,
-            message,
-            response: aiReply,
-            context: { session_id: payload.session_id, task_mode: true },
-          },
+        const settings = await prisma.userSetting.findUnique({
+          where: { userId },
         });
+        if (settings) {
+          chatbotHistoryEnabled = settings.chatbotHistoryEnabled;
+        }
       } catch (dbErr) {
-        console.warn('[ChatbotService] Failed to save ChatLog:', dbErr.message);
+        console.warn('[ChatbotService] Failed to load user settings:', dbErr.message);
       }
 
-      try {
-        const messagePreview = message.length > 120 ? `${message.substring(0, 117)}...` : message;
-        const responsePreview = aiReply.length > 160 ? `${aiReply.substring(0, 157)}...` : aiReply;
+      if (chatbotHistoryEnabled) {
+        try {
+          await prisma.chatLog.create({
+            data: {
+              userId,
+              message,
+              response: aiReply,
+              context: { session_id: payload.session_id, task_mode: true },
+            },
+          });
+        } catch (dbErr) {
+          console.warn('[ChatbotService] Failed to save ChatLog:', dbErr.message);
+        }
 
-        // Save History log
-        await prisma.history.create({
-          data: {
-            userId,
-            action: 'ASKED_CHATBOT',
-            metadata: {
-              messagePreview,
-              responsePreview,
-              mode: 'chat'
+        try {
+          const messagePreview = message.length > 120 ? `${message.substring(0, 117)}...` : message;
+          const responsePreview = aiReply.length > 160 ? `${aiReply.substring(0, 157)}...` : aiReply;
+
+          // Save History log
+          await prisma.history.create({
+            data: {
+              userId,
+              action: 'ASKED_CHATBOT',
+              metadata: {
+                messagePreview,
+                responsePreview,
+                mode: 'chat'
+              }
             }
-          }
-        });
-      } catch (dbErr) {
-        console.warn('[ChatbotService] Failed to save History:', dbErr.message);
+          });
+        } catch (dbErr) {
+          console.warn('[ChatbotService] Failed to save History:', dbErr.message);
+        }
       }
 
       return { reply: aiReply, source: 'ai' };
@@ -169,30 +183,44 @@ class ChatbotService {
         ? rawList.map((item, idx) => this._normalizePlaceItem(item, idx, selected_cat))
         : [];
 
-      // Best-effort ChatLog save
-      const logMessage  = `Rekomendasi tempat: ${selected_uni} - ${selected_cat}`;
-      const logResponse = recommendations.length > 0
-        ? `Ditemukan ${recommendations.length} tempat`
-        : (replyText || 'Tidak ada hasil');
-
+      let chatbotHistoryEnabled = true;
       try {
-        await prisma.chatLog.create({
-          data: {
-            userId,
-            message:  logMessage,
-            response: logResponse,
-            context: {
-              session_id:   sessionId,
-              selected_uni,
-              selected_cat,
-              lat,
-              lon,
-              mode: 'place_recommendation',
-            },
-          },
+        const settings = await prisma.userSetting.findUnique({
+          where: { userId },
         });
+        if (settings) {
+          chatbotHistoryEnabled = settings.chatbotHistoryEnabled;
+        }
       } catch (dbErr) {
-        console.warn('[ChatbotService] Failed to save place recommendation ChatLog:', dbErr.message);
+        console.warn('[ChatbotService] Failed to load user settings:', dbErr.message);
+      }
+
+      if (chatbotHistoryEnabled) {
+        // Best-effort ChatLog save
+        const logMessage  = `Rekomendasi tempat: ${selected_uni} - ${selected_cat}`;
+        const logResponse = recommendations.length > 0
+          ? `Ditemukan ${recommendations.length} tempat`
+          : (replyText || 'Tidak ada hasil');
+
+        try {
+          await prisma.chatLog.create({
+            data: {
+              userId,
+              message:  logMessage,
+              response: logResponse,
+              context: {
+                session_id:   sessionId,
+                selected_uni,
+                selected_cat,
+                lat,
+                lon,
+                mode: 'place_recommendation',
+              },
+            },
+          });
+        } catch (dbErr) {
+          console.warn('[ChatbotService] Failed to save place recommendation ChatLog:', dbErr.message);
+        }
       }
 
       try {
