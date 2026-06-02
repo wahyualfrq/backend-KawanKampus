@@ -432,6 +432,7 @@ class PlaceService {
       kategori_jarak: 'Jalan Kaki',
       latitude: campusLat,
       longitude: campusLon,
+      top_n: 15,
     };
 
     if (process.env.NODE_ENV === 'development') {
