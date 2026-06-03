@@ -25,7 +25,7 @@ class AuthService {
     const token = this._generateToken(newUser.id, newUser.email);
 
     return {
-      user: { id: newUser.id, email: newUser.email, name: newUser.name },
+      user: { id: newUser.id, email: newUser.email, name: newUser.name, avatarUrl: newUser.avatarUrl || '' },
       token,
     };
   }
@@ -48,7 +48,7 @@ class AuthService {
     const token = this._generateToken(user.id, user.email);
 
     return {
-      user: { id: user.id, email: user.email, name: user.name },
+      user: { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatarUrl || '' },
       token,
     };
   }
