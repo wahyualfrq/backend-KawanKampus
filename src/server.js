@@ -4,7 +4,6 @@ const prisma = require('./common/config/prisma');
 
 const startServer = async () => {
   try {
-    // Lazily connect to database on local development startup
     await prisma.$connect();
     console.log('✅ Database connected successfully via Singleton');
 

@@ -1,7 +1,6 @@
 const axios = require('axios');
 const config = require('../../common/config/env');
 
-// ── Campus center coordinates ─────────────────────────────────────────────────
 const CAMPUS_CENTERS = {
   'Universitas Gadjah Mada':                         { lat: -7.7733153,   lon: 110.3892489  },
   'Universitas Airlangga - B':                        { lat: -7.2729075,   lon: 112.7560403  },
@@ -14,7 +13,6 @@ const CAMPUS_CENTERS = {
   'Universitas Pendidikan Indonesia Bandung':         { lat: -6.8817098,   lon: 107.5954963  },
 };
 
-// ── Fallback config for GET /places/config ────────────────────────────────────
 const LAINNYA_CATEGORIES = [
   'Apotek', 'Kedai', 'Kedai Kopi', 'Minimarket', 'Perhentian Bus',
   'Pizza', 'Restoran', 'Restoran Padang', 'Tempat Fitness',
@@ -48,7 +46,6 @@ const FALLBACK_CONFIG = {
   campusCenters: CAMPUS_CENTERS,
 };
 
-// ── Category expansion map (UI chip → raw AI service categories) ──────────────
 const CATEGORY_EXPANSION = {
   'Semua':    ['Fotokopi', 'Print', 'Makanan', 'Restoran', 'Cafe', 'Kedai', 'Minimarket', 'Apotek'],
   'Fotokopi': ['Fotokopi', 'Print'],
@@ -56,8 +53,6 @@ const CATEGORY_EXPANSION = {
   'Makanan':  ['Makanan', 'Restoran', 'Warteg', 'Pizza'],
   'Minuman':  ['Cafe', 'Kedai', 'Kedai Kopi'],
 };
-
-// ── Pure utility functions ────────────────────────────────────────────────────
 
 function getHaversineDistance(lat1, lon1, lat2, lon2) {
   if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
@@ -76,9 +71,6 @@ function formatDistanceLabel(meters) {
   return `${Math.round(meters)} m`;
 }
 
-/**
- * Parse a "📍 Jarak: 359 m" or "1.2 km" or raw number → metres | null.
- */
 function parseDistanceText(value) {
   if (value == null || value === '') return null;
   if (typeof value === 'number') return isFinite(value) && !isNaN(value) ? value : null;
@@ -94,11 +86,6 @@ function parseDistanceText(value) {
   return null;
 }
 
-/**
- * Extract lat/lon from a Google Maps link.
- * Handles:
- *   ?query=lat,lon  |  @lat,lon  |  /search/?...query=lat,lon  |  !3d lat !4d lon
- */
 function extractCoordsFromMapLink(mapLink) {
   if (!mapLink) return { lat: null, lon: null };
 
@@ -147,10 +134,6 @@ function deduplicatePlaces(places) {
   return unique;
 }
 
-/**
- * Extract the raw item list from any recommendation response shape.
- * Supported: { recommendations }, { results }, { data }, direct array.
- */
 function extractItemList(raw) {
   if (!raw) return [];
   if (Array.isArray(raw)) return raw;
@@ -164,26 +147,15 @@ function extractItemList(raw) {
   return [];
 }
 
-/**
- * Normalize a raw response item into the standard shape.
- */
 function normalizeItem(item, idx, fallbackCategory, campusLat, campusLon) {
   const rank = idx + 1;
-
-  // Name mapping: name / nama / Nama_Tempat
   const name = item.name || item.nama || item.Nama_Tempat || `Tempat ${rank}`;
-
-  // Category mapping: category / kategori / Kategori_Awal
   let category = item.category || item.kategori || item.Kategori_Awal || '';
   if (!category && item.hours) {
     category = item.hours.split(' - ')[0].trim();
   }
   if (!category) category = fallbackCategory || '';
-
-  // Map link mapping: mapLink / map_link / Google_Maps_Link
   const mapLink = item.mapLink || item.map_link || item.Google_Maps_Link || '';
-
-  // Coordinates mapping: lat / latitude / Latitude, lon / lng / longitude / Longitude
   let parsedLat = null;
   let parsedLon = null;
   const rawLat = item.lat ?? item.latitude ?? item.Latitude;
@@ -197,7 +169,6 @@ function normalizeItem(item, idx, fallbackCategory, campusLat, campusLon) {
     if (!isNaN(pLon)) parsedLon = pLon;
   }
 
-  // Extract from mapLink if null
   if ((parsedLat == null || parsedLon == null) && mapLink) {
     const extracted = extractCoordsFromMapLink(mapLink);
     if (extracted.lat != null && extracted.lon != null) {
@@ -209,7 +180,6 @@ function normalizeItem(item, idx, fallbackCategory, campusLat, campusLon) {
   const lat = parsedLat;
   const lon = parsedLon;
 
-  // Distance mapping: distanceText / distance / jarak
   const rawDistanceText = item.distanceText ?? item.distance ?? item.jarak ?? null;
 
   let distanceMeters = null;
@@ -239,7 +209,6 @@ function normalizeItem(item, idx, fallbackCategory, campusLat, campusLon) {
     }
   }
 
-  // Rating & Reviews mapping
   const rawRating = item.rating ?? item.Rating ?? null;
   const rawReviews = item.reviews ?? item.Total_Reviews ?? item.totalReviews ?? null;
   const rating = (rawRating !== null && !isNaN(parseFloat(rawRating))) ? parseFloat(rawRating) : null;
@@ -270,15 +239,12 @@ function normalizeItem(item, idx, fallbackCategory, campusLat, campusLon) {
 
 const MAX_RECOMMENDATIONS = 15;
 
-// ── Service class ─────────────────────────────────────────────────────────────
 class PlaceService {
 
-  /** GET /places/config */
   async getConfig() {
     return { ...FALLBACK_CONFIG };
   }
 
-  /** GET /places/nearby — unchanged Google Maps integration */
   async getNearbyPlaces(lat, lng, category) {
     if (!config.googleMapsApiKey) throw new Error('Google Maps API Key is not configured');
     try {
@@ -299,13 +265,7 @@ class PlaceService {
     }
   }
 
-  /**
-   * POST /places/recommend
-   * Uses RECOMMENDATION_API_URL /recommend
-   * Never sends "Semua" directly — expands categories in backend.
-   */
   async getRecommendations(userId, { selected_uni, selected_cat, lat, lon, actual_category }) {
-    // Guard: recommendationApiUrl must be configured
     if (!config.recommendationApiUrl) {
       return {
         success: false,
@@ -315,14 +275,11 @@ class PlaceService {
       };
     }
 
-    // Input validation
     if (!selected_uni || !selected_cat) {
       const err = new Error('Parameter pencarian tidak lengkap.');
       err.statusCode = 400;
       throw err;
     }
-
-    // Always use campus center coordinates — never browser geolocation
     const campusCenter = CAMPUS_CENTERS[selected_uni];
     if (!campusCenter) {
       const err = new Error('Kampus tidak didukung.');
@@ -332,7 +289,6 @@ class PlaceService {
     const campusLat = campusCenter.lat;
     const campusLon = campusCenter.lon;
 
-    // Expand UI category → raw category list for AI service
     let rawCategories;
     if (CATEGORY_EXPANSION[selected_cat]) {
       rawCategories = CATEGORY_EXPANSION[selected_cat];
@@ -341,8 +297,6 @@ class PlaceService {
     } else {
       rawCategories = [selected_cat];
     }
-
-    // Query all raw categories in parallel — skip failures
     const tasks = rawCategories.map(cat => this._fetchSingleCategory(userId, selected_uni, cat, campusLat, campusLon));
     const results = await Promise.allSettled(tasks);
 
@@ -358,22 +312,16 @@ class PlaceService {
       }
     }
 
-    // All categories failed → service error
     if (!hasSuccessfulCall) {
       const err = new Error('Layanan rekomendasi sedang bermasalah. Coba lagi nanti.');
       err.statusCode = 502;
       throw err;
     }
-
-    // Normalize
     const normalizedList = rawList.map((item, idx) =>
       normalizeItem(item, idx, item.Kategori_Awal || selected_cat, campusLat, campusLon)
     );
 
-    // Deduplicate
     const uniqueList = deduplicatePlaces(normalizedList);
-
-    // Sort by distance ascending (nulls last)
     uniqueList.sort((a, b) => {
       if (a.distanceMeters == null && b.distanceMeters == null) return 0;
       if (a.distanceMeters == null) return 1;
@@ -383,14 +331,11 @@ class PlaceService {
 
     const totalBeforeLimit = uniqueList.length;
 
-    // Top 15
     const finalRecommendations = uniqueList.slice(0, MAX_RECOMMENDATIONS).map((place, idx) => {
       place.rank = idx + 1;
       place.id   = place.id || String(idx + 1);
       return place;
     });
-
-    // Save history log (best-effort)
     try {
       const prisma = require('../../common/config/prisma');
       await prisma.history.create({
@@ -421,9 +366,6 @@ class PlaceService {
     };
   }
 
-  /**
-   * Calls RECOMMENDATION_API_URL/recommend
-   */
   async _fetchSingleCategory(userId, selected_uni, rawCategory, campusLat, campusLon) {
     const url = `${config.recommendationApiUrl}/recommend`;
     const payload = {

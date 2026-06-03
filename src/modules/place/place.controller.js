@@ -1,10 +1,6 @@
 const placeService = require('./place.service');
 
 class PlaceController {
-  /**
-   * GET /api/v1/places/config  (PUBLIC — no auth required)
-   * Returns campus list + category mapping from local fallback config.
-   */
   async getConfig(req, res, next) {
     try {
       const cfg = await placeService.getConfig();
@@ -19,9 +15,6 @@ class PlaceController {
     }
   }
 
-  /**
-   * GET /api/v1/places/nearby?lat=&lng=&category=
-   */
   async getNearbyPlaces(req, res, next) {
     try {
       const { lat, lng, category } = req.query;
@@ -36,10 +29,6 @@ class PlaceController {
     }
   }
 
-  /**
-   * POST /api/v1/places/recommend
-   * Body: { selected_uni, selected_cat, lat, lon, session_id? }
-   */
   async getRecommendations(req, res, next) {
     try {
       const { selected_uni, selected_cat, lat, lon, session_id, actual_category } = req.body;
@@ -54,7 +43,6 @@ class PlaceController {
         actual_category,
       });
 
-      // Handle controlled service-unavailable state cleanly
       if (recommendations && recommendations.success === false) {
         return res.status(200).json(recommendations);
       }

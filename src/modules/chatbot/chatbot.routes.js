@@ -8,11 +8,8 @@ const router = express.Router();
 
 router.use(authenticate);
 
-// POST /api/v1/chatbot — Bantu Tugas (task-help AI chat)
 router.post('/', validate(chatSchema), chatbotController.chat.bind(chatbotController));
 
-// POST /api/v1/chatbot/place-recommendation — Chatbot place recommendation via AI_API_URL
-// Note: uses chatbot AI service (AI_API_URL), NOT PLACE_RECOMMENDER_API_URL
 router.post(
   '/place-recommendation',
   validate(placeRecommendationSchema),

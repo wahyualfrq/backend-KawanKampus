@@ -2,7 +2,6 @@ const axios = require('axios');
 const config = require('../../common/config/env');
 const prisma = require('../../common/config/prisma');
 
-// ── Distance parsing helpers ──────────────────────────────────────────────────
 function extractRawDistance(item) {
   const candidates = [
     item.Jarak_KM, item.Jarak_km, item.distance_km,
@@ -44,10 +43,6 @@ function formatDistanceLabel(meters) {
 }
 
 class ChatbotService {
-  /**
-   * Task-mode chatbot: sends message to Flask AI /chat with task_mode=true
-   * Saves the exchange to ChatLog.
-   */
   async getChatResponse(userId, message, sessionId) {
     const aiApiUrl = config.aiApiUrl;
     if (!aiApiUrl) {
@@ -103,7 +98,6 @@ class ChatbotService {
           const messagePreview = message.length > 120 ? `${message.substring(0, 117)}...` : message;
           const responsePreview = aiReply.length > 160 ? `${aiReply.substring(0, 157)}...` : aiReply;
 
-          // Save History log
           await prisma.history.create({
             data: {
               userId,
@@ -129,12 +123,6 @@ class ChatbotService {
     }
   }
 
-  /**
-   * Chatbot place recommendation mode.
-   * Uses AI_API_URL/chat with special_action=recommendation_proximity.
-   * This is part of the chatbot conversational service — NOT the Places/Map page.
-   * PLACE_RECOMMENDER_API_URL is NOT used here.
-   */
   async getPlaceRecommendation(userId, { selected_uni, selected_cat, lat, lon, session_id }) {
     const aiApiUrl = config.aiApiUrl;
     if (!aiApiUrl) {
@@ -164,21 +152,18 @@ class ChatbotService {
 
       const raw = response.data;
 
-      // Extract recommendations list (multiple possible keys from AI service)
       const rawList =
         raw?.recommendations ||
         raw?.results         ||
         (Array.isArray(raw?.data) ? raw.data : null) ||
         (Array.isArray(raw)       ? raw      : null);
 
-      // Extract free-text reply
       const replyText =
         raw?.response ||
         raw?.reply    ||
         raw?.message  ||
         null;
 
-      // Normalise recommendation items
       const recommendations = Array.isArray(rawList)
         ? rawList.map((item, idx) => this._normalizePlaceItem(item, idx, selected_cat))
         : [];
@@ -196,7 +181,6 @@ class ChatbotService {
       }
 
       if (chatbotHistoryEnabled) {
-        // Best-effort ChatLog save
         const logMessage  = `Rekomendasi tempat: ${selected_uni} - ${selected_cat}`;
         const logResponse = recommendations.length > 0
           ? `Ditemukan ${recommendations.length} tempat`
@@ -251,7 +235,6 @@ class ChatbotService {
     }
   }
 
-  /** Safely normalise one AI place item — never returns NaN/null in visible fields */
   _normalizePlaceItem(item, idx, fallbackCategory) {
     const rank = idx + 1;
     const name     = item.Nama_Tempat || item.name || item.nama || item.Nama || `Tempat ${rank}`;
@@ -260,7 +243,6 @@ class ChatbotService {
     const address  = item.address  || item.alamat || item.Alamat || '';
     const description = item.description || item.Tags || '';
 
-    // Distance
     let distanceMeters = null;
     if (item.Jarak_KM != null) {
       const km = parseFloat(item.Jarak_KM);
@@ -276,11 +258,9 @@ class ChatbotService {
     const distanceText = formatDistanceLabel(distanceMeters) || 
       (typeof rawDist === 'string' ? rawDist.replace('📍 Jarak:', '').trim() : null);
 
-    // Rating
     const rawRating = item.Rating ?? item.rating;
     const rating    = rawRating != null && !isNaN(parseFloat(rawRating)) ? parseFloat(rawRating) : null;
 
-    // Reviews
     const rawReviews = item.Total_Reviews ?? item.total_reviews ?? item.reviews;
     const reviews    = rawReviews != null && !isNaN(parseInt(rawReviews, 10)) ? parseInt(rawReviews, 10) : null;
 

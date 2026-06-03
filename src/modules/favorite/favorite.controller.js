@@ -64,10 +64,8 @@ class FavoriteController {
 
       const rawCategoryVal = req.body.rawCategory || req.body.originalCategory || req.body.category || null;
 
-      // Generate a stable googleId
       const googleId = mapLink || `${name}_${category || 'ATK'}_${lat || 0}_${lng || lon || 0}`;
 
-      // Find or create place
       let place = await prisma.place.findUnique({ where: { googleId } });
       if (!place) {
         let parsedLat = parseFloat(lat);
@@ -103,7 +101,6 @@ class FavoriteController {
         }
       }
 
-      // Create favorite
       const favorite = await prisma.favorite.upsert({
         where: {
           userId_placeId: {
@@ -118,7 +115,6 @@ class FavoriteController {
         update: {}
       });
 
-      // Save History Activity (best-effort)
       try {
         await prisma.history.create({
           data: {
@@ -191,7 +187,6 @@ class FavoriteController {
         where: { id: fav.id }
       });
 
-      // Save History Activity (best-effort)
       try {
         if (placeDetails) {
           await prisma.history.create({

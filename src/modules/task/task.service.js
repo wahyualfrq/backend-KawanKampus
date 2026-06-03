@@ -3,7 +3,6 @@ const prisma = require('../../common/config/prisma');
 
 class TaskService {
   async getTasks(userId, query) {
-    // Use a high limit so the Kanban board gets all tasks (client does filtering)
     const page  = parseInt(query.page)  || 1;
     const limit = parseInt(query.limit) || 200;
     const skip  = (page - 1) * limit;
@@ -47,7 +46,6 @@ class TaskService {
       userId,
     });
 
-    // Best-effort history logging
     try {
       await prisma.history.create({
         data: {
@@ -72,7 +70,6 @@ class TaskService {
   async updateTask(taskId, userId, updateData) {
     const { title, description, status, category, priority, dueDate } = updateData;
 
-    // Fetch original task before update to verify ownership and compare fields
     const previous = await taskRepository.findById(taskId, userId);
     if (!previous) {
       const error = new Error('Task not found or unauthorized');
@@ -80,7 +77,6 @@ class TaskService {
       throw error;
     }
 
-    // Build only provided fields
     const data = {};
     if (title       !== undefined) data.title       = title;
     if (description !== undefined) data.description = description;
@@ -97,11 +93,9 @@ class TaskService {
       throw error;
     }
 
-    // Return the full updated task so the frontend store can merge it correctly
     const updated = await taskRepository.findById(taskId, userId);
 
     if (updated) {
-      // Best-effort history logging
       try {
         let action = 'UPDATED_TASK';
         let metadata = {
@@ -152,7 +146,6 @@ class TaskService {
   }
 
   async deleteTask(taskId, userId) {
-    // Fetch original task before deletion to verify ownership and store values
     const previous = await taskRepository.findById(taskId, userId);
     if (!previous) {
       const error = new Error('Task not found or unauthorized');
@@ -168,7 +161,6 @@ class TaskService {
       throw error;
     }
 
-    // Best-effort history logging
     try {
       await prisma.history.create({
         data: {

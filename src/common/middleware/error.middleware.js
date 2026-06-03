@@ -1,7 +1,3 @@
-/**
- * Global Error Handling Middleware
- * Centralizes error responses for consistency.
- */
 const errorHandler = (err, req, res, next) => {
   console.error(`[Error] ${err.message}`, err.stack);
 

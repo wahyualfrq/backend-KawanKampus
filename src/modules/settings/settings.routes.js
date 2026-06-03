@@ -11,7 +11,6 @@ const {
 
 const router = express.Router();
 
-// Apply JWT authentication to all routes
 router.use(authenticate);
 
 router.get('/profile', settingsController.getProfile);

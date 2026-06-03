@@ -6,17 +6,12 @@ const { getNearbyPlacesSchema, recommendPlacesSchema } = require('../../common/v
 
 const router = express.Router();
 
-// ── Public route (no auth) ────────────────────────────────────────────────
-// GET /api/v1/places/config
 router.get('/config', placeController.getConfig.bind(placeController));
 
-// ── Protected routes ──────────────────────────────────────────────────────
 router.use(authenticate);
 
-// GET /api/v1/places/nearby
 router.get('/nearby', validate(getNearbyPlacesSchema), placeController.getNearbyPlaces.bind(placeController));
 
-// POST /api/v1/places/recommend
 router.post('/recommend', validate(recommendPlacesSchema), placeController.getRecommendations.bind(placeController));
 
 module.exports = router;

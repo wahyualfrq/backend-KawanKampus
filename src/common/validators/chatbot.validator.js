@@ -7,10 +7,6 @@ const chatSchema = z.object({
   }),
 });
 
-/**
- * Validator for POST /api/v1/chatbot/place-recommendation
- * Chatbot place recommendation uses AI_API_URL (chatbot service), NOT PLACE_RECOMMENDER_API_URL.
- */
 const placeRecommendationSchema = z.object({
   body: z.object({
     selected_uni: z.string().min(1, 'selected_uni is required'),

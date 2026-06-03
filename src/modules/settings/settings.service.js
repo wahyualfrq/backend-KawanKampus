@@ -33,10 +33,8 @@ class SettingsService {
   }
 
   async updateProfile(userId, data) {
-    // Exclude restricted fields
     const { email, password, role, ...updateData } = data;
 
-    // Additional validation for base64 avatars
     if (updateData.avatarUrl && updateData.avatarUrl.startsWith('data:')) {
       if (!updateData.avatarUrl.startsWith('data:image/')) {
         const err = new Error('Format foto profil tidak valid. Harus berupa gambar.');
@@ -66,7 +64,6 @@ class SettingsService {
   }
 
   async getPreferences(userId) {
-    // Check if settings already exist, otherwise create defaults automatically
     return prisma.userSetting.upsert({
       where: { userId },
       create: { userId },
@@ -126,7 +123,6 @@ class SettingsService {
       throw err;
     }
 
-    // Cascade delete via Prisma/PostgreSQL schema setup
     await prisma.user.delete({
       where: { id: userId },
     });
