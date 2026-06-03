@@ -237,7 +237,7 @@ function normalizeItem(item, idx, fallbackCategory, campusLat, campusLon) {
   };
 }
 
-const MAX_RECOMMENDATIONS = 15;
+const FETCH_LIMIT = 100;
 
 class PlaceService {
 
@@ -331,7 +331,7 @@ class PlaceService {
 
     const totalBeforeLimit = uniqueList.length;
 
-    const finalRecommendations = uniqueList.slice(0, MAX_RECOMMENDATIONS).map((place, idx) => {
+    const finalRecommendations = uniqueList.slice(0, FETCH_LIMIT).map((place, idx) => {
       place.rank = idx + 1;
       place.id   = place.id || String(idx + 1);
       return place;
@@ -361,7 +361,7 @@ class PlaceService {
       rawCategoriesUsed: rawCategories,
       totalBeforeLimit,
       returnedCount:     finalRecommendations.length,
-      limit:             MAX_RECOMMENDATIONS,
+      fetchLimit:        FETCH_LIMIT,
       recommendations:   finalRecommendations,
     };
   }
@@ -374,7 +374,7 @@ class PlaceService {
       kategori_jarak: 'Jalan Kaki',
       latitude: campusLat,
       longitude: campusLon,
-      top_n: 15,
+      top_n: FETCH_LIMIT,
     };
 
     if (process.env.NODE_ENV === 'development') {
@@ -385,7 +385,7 @@ class PlaceService {
 
     const response = await axios.post(url, payload, {
       headers: { 'Content-Type': 'application/json' },
-      timeout: 15000,
+      timeout: 8000,
     });
 
     if (process.env.NODE_ENV === 'development') {
