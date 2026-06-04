@@ -268,14 +268,23 @@ class PlaceService {
     let rawList = [];
     let endpointUsed = '';
 
-    // ── Route to the correct Cloud Run endpoint ──────────────────────────────
     if (searchQuery && searchQuery.trim()) {
-      // Search mode: POST /search
+      // Search mode: Fetch all recommendations for the campus first,
+      // then perform a robust search filter in Node by place name, category, and tags.
+      // This bypasses the blind TF-IDF model on Cloud Run which does not index Nama_Tempat.
       endpointUsed = '/search';
-      rawList = await placeRecommenderClient.searchPlaces({
+      const allPlaces = await placeRecommenderClient.fetchAllRecommendations({
         kampus:  selected_uni,
-        query:   searchQuery.trim(),
         top_n:   FETCH_LIMIT,
+      });
+
+      const query = searchQuery.trim().toLowerCase();
+      rawList = allPlaces.filter(item => {
+        const name = (item.Nama_Tempat || item.name || '').toLowerCase();
+        const category = (item.Kategori_Awal || item.category || '').toLowerCase();
+        const tags = (item.Tags || item.tags || '').toLowerCase();
+        
+        return name.includes(query) || category.includes(query) || tags.includes(query);
       });
 
     } else if (!selected_cat || selected_cat === 'Semua') {
