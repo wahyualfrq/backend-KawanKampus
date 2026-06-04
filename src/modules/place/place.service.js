@@ -215,7 +215,7 @@ function normalizeItem(item, idx, fallbackCategory, campusLat, campusLon) {
   };
 }
 
-const FETCH_LIMIT = 100;
+const FETCH_LIMIT = 10000;
 
 class PlaceService {
 
