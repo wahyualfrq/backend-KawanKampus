@@ -34,17 +34,24 @@ const app = express();
 app.use(helmet());
 
 const allowedOrigins = config.allowedOrigins 
-  ? config.allowedOrigins.split(',') 
-  : ['http://localhost:3000', 'http://localhost:5173'];
+  ? config.allowedOrigins.split(',').map(o => o.trim())
+  : [];
 
 app.use(cors({
   origin: (origin, callback) => {
+    // Allow server-to-server or non-browser requests
     if (!origin) return callback(null, true);
-    if (
-      allowedOrigins.indexOf(origin) !== -1 || 
-      allowedOrigins.includes('*') ||
-      origin.endsWith('.vercel.app')
-    ) {
+
+    // Always allow localhost (any port) for local development
+    const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+
+    // Always allow Vercel preview & production deployments
+    const isVercel = origin.endsWith('.vercel.app');
+
+    // Check against explicit ALLOWED_ORIGINS list
+    const isAllowed = allowedOrigins.includes('*') || allowedOrigins.includes(origin);
+
+    if (isLocalhost || isVercel || isAllowed) {
       callback(null, true);
     } else {
       callback(new Error('Blocked by CORS policy'));
