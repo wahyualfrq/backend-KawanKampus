@@ -39,16 +39,10 @@ const allowedOrigins = config.allowedOrigins
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow server-to-server or non-browser requests
     if (!origin) return callback(null, true);
 
-    // Always allow localhost (any port) for local development
     const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-
-    // Always allow Vercel preview & production deployments
     const isVercel = origin.endsWith('.vercel.app');
-
-    // Check against explicit ALLOWED_ORIGINS list
     const isAllowed = allowedOrigins.includes('*') || allowedOrigins.includes(origin);
 
     if (isLocalhost || isVercel || isAllowed) {
