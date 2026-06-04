@@ -31,7 +31,7 @@ class PlaceController {
 
   async getRecommendations(req, res, next) {
     try {
-      const { selected_uni, selected_cat, lat, lon, session_id, actual_category } = req.body;
+      const { selected_uni, selected_cat, lat, lon, session_id, actual_category, searchQuery } = req.body;
       const userId = req.user.userId;
 
       const recommendations = await placeService.getRecommendations(userId, {
@@ -41,6 +41,7 @@ class PlaceController {
         lon,
         session_id,
         actual_category,
+        searchQuery,
       });
 
       if (recommendations && recommendations.success === false) {
