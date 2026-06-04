@@ -331,12 +331,13 @@ async function searchPlaces(payload) {
     }
 
     const result = extractSearchResponse(raw);
+    const matchedResult = result.filter(item => item.similarity != null && item.similarity > 0);
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('[Places] normalizedCount:', result.length);
+      console.log('[Places] normalizedCount:', matchedResult.length);
     }
 
-    return result;
+    return matchedResult;
   } catch (error) {
     // "Tempat tidak ditemukan" might come as a 404 — treat as empty array
     if (error.response && error.response.status === 404) {
